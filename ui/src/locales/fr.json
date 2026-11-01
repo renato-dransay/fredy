@@ -1632,7 +1632,7 @@
   "search.saveProfile": "Enregistrer les critères",
   "search.fitTitle": "Évaluation Jev",
   "search.summaryNotAssessed": "Jev · Non évalué",
-  "search.summaryScore": "Jev {{value}} / 10",
+  "search.summaryScore": "{{value}}",
   "search.summaryStale": "Obsolète",
   "search.summaryFailure": "Exigence obligatoire non satisfaite",
   "search.summaryUnknown": "Exigences obligatoires non vérifiées",

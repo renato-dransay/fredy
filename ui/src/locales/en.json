@@ -1632,7 +1632,7 @@
   "search.saveProfile": "Save requirements",
   "search.fitTitle": "Jev fit assessment",
   "search.summaryNotAssessed": "Jev · Not assessed",
-  "search.summaryScore": "Jev {{value}} / 10",
+  "search.summaryScore": "{{value}}",
   "search.summaryStale": "Out of date",
   "search.summaryFailure": "Must-have unmet",
   "search.summaryUnknown": "Must-haves unverified",

@@ -73,9 +73,9 @@ describe('Jev result display', () => {
     const html = render(FitSummary, {
       summary: { score, coverage: 100, hardFailure: false, hardUnknown: false, stale: false },
     });
-    expect(html).toContain(`Jev ${value} / 10`);
+    expect(html.match(/<strong[^>]*>(.*?)<\/strong>/)[1]).toBe(value);
     expect(html).toContain(`fitSummary__score--${tone}`);
-    expect(html).not.toContain('/ 100');
+    expect(html).not.toContain('/ 10');
   });
   it.each([
     [{ hardFailure: true }, 'low'],
@@ -102,7 +102,7 @@ describe('Jev result display', () => {
     const value = { score: 71, coverage: 40 };
     state.locale = 'de-DE';
     try {
-      expect(render(FitSummary, { summary: value })).toContain('Jev 7,1 / 10');
+      expect(render(FitSummary, { summary: value })).toContain('>7,1</strong>');
       expect(value.score).toBe(71);
     } finally {
       state.locale = 'en-US';
@@ -119,12 +119,12 @@ describe('Jev result display', () => {
     expect(render(FitSummary, { summary: null })).toContain('Not assessed');
     expect(render(FitSummary, { summary: null })).not.toContain('/ 10');
     const html = render(FitSummary, { summary: { ...summary, score: 0 } });
-    expect(html).toContain('Jev 0 / 10');
+    expect(html).toContain('>0</strong>');
     expect(html).not.toContain('Not assessed');
   });
   it('keeps stale, failed and unknown must-have warnings visible next to even a high score', () => {
     const html = render(FitSummary, { summary });
-    for (const value of ['Jev 9 / 10', '40%', 'Out of date', 'Must-have unmet', 'Must-haves unverified'])
+    for (const value of ['>9</strong>', '40%', 'Out of date', 'Must-have unmet', 'Must-haves unverified'])
       expect(html).toContain(value);
   });
   it.each([
@@ -140,7 +140,7 @@ describe('Jev result display', () => {
     for (const value of [
       'Assessed flat',
       'New flat',
-      'Jev 9 / 10',
+      '>9</strong>',
       'Must-have unmet',
       'Must-haves unverified',
       'Not assessed',
@@ -171,7 +171,7 @@ describe('Jev result display', () => {
     const html = render(FitCard, { listingId: 'one', listing: { id: 'one' } });
     for (const value of [
       'Jev fit assessment',
-      'Jev 9 / 10',
+      '>9</strong>',
       'Must-have unmet',
       'Must-haves unverified',
       'Dog must be permitted',
