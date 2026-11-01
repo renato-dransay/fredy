@@ -79,6 +79,8 @@
     "cloakbrowser": "^0.6.5",
     "fastify": "^5.12.7",
     "handlebars": "4.7.10",
+    "imapflow": "2.10.0",
+    "mailparser": "3.14.1",
     "maplibre-gl": "6.16.0",
     "marked": "^18.1.2",
     "nanoid": "6.0.2",

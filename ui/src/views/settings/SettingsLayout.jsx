@@ -34,6 +34,7 @@ export default function SettingsLayout() {
     { path: '/settings/travel-time', label: t('settings.tabTravelTime') },
     { path: '/settings/listings', label: t('settings.tabListingDetails') },
     { path: '/settings/application', label: t('settings.tabApplication') },
+    { path: '/settings/search-profile', label: t('search.profileTitle') },
     { path: '/settings/notifications', label: t('settings.tabNotifications') },
     { path: '/settings/connections', label: t('settings.tabConnections') },
   ];

@@ -8,7 +8,6 @@ import { useNavigate } from 'react-router';
 import { Modal, Button, Select, Space, Spin, TextArea, Toast, Typography } from '@douyinfe/semi-ui-19';
 import { IconCopy } from '@douyinfe/semi-icons';
 import { useTranslation } from '../../../services/i18n/i18n.jsx';
-import { useActions } from '../../../services/state/store.js';
 import { errorMessage } from '../../../services/xhr.js';
 import { fetchApplicationLetter } from '../../../services/applicationClient.js';
 import { copyToClipboard } from '../../../services/clipboard.js';
@@ -36,14 +35,11 @@ const { Text, Paragraph } = Typography;
  * @param {boolean} props.visible
  * @param {string|null} props.listingId
  * @param {() => void} props.onCancel
- * @param {() => void} [props.onApplied] - Called once the listing has been marked as applied, so
- *   the view behind the dialog can re-read whatever it shows.
  * @returns {React.ReactElement}
  */
-export default function ApplicationModal({ visible, listingId, onCancel, onApplied }) {
+export default function ApplicationModal({ visible, listingId, onCancel }) {
   const t = useTranslation();
   const navigate = useNavigate();
-  const actions = useActions();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -106,18 +102,7 @@ export default function ApplicationModal({ visible, listingId, onCancel, onAppli
     setLanguage(null);
   }, [listingId]);
 
-  /**
-   * Copy the letter, then record that this listing has been applied for.
-   *
-   * The two belong together: copying the letter is the moment the decision is made, and a status
-   * the user has to remember to set afterwards is a status that stays empty. The clipboard write
-   * comes first and its own failure aborts the whole thing - marking a listing as applied for when
-   * nothing reached the clipboard would be recording something that did not happen.
-   *
-   * The status failing on its own is not worth undoing the copy over: the letter is in the
-   * clipboard either way, so the toast says what went wrong and the dialog stays open so the user
-   * can see it.
-   */
+  /** Copying prepares a letter; only actual transport acceptance or a manual user update records submission. */
   const handleCopy = async () => {
     setCopying(true);
     try {
@@ -127,14 +112,7 @@ export default function ApplicationModal({ visible, listingId, onCancel, onAppli
         return;
       }
 
-      try {
-        await actions.listingsData.setListingStatus(listingId, 'applied');
-        onApplied?.();
-        Toast.success(t('listing.application.copiedAndMarked'));
-      } catch (exception) {
-        console.error('Copied the letter but could not mark the listing as applied.', exception);
-        Toast.warning(t('listing.application.markFailed'));
-      }
+      Toast.success(t('search.letterCopied'));
       onCancel();
     } finally {
       setCopying(false);
@@ -157,7 +135,7 @@ export default function ApplicationModal({ visible, listingId, onCancel, onAppli
         disabled={loading || copying || text.length === 0}
         onClick={handleCopy}
       >
-        {t('listing.application.copyAndMark')}
+        {t('search.copyLetter')}
       </Button>
     </div>
   );

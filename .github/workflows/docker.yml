@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'master'
+      - 'main'
     # '!*-pre.*' keeps the pre-release tags created by `yarn release:pre` out of the stable
     # image - those are built from develop and belong in fredy-pre-release (see pre-release.yml).
     tags:

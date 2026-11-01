@@ -1,0 +1,48 @@
+# Private Mac Mini deployment
+
+The fork's `main` branch is the delivery branch. The Mac Mini checks it every minute using Git transport; it does not require a public webhook, Funnel, or a privileged GitHub Actions runner. New first-parent commits are checked and deployed in order. Several commits arriving between polls are queued rather than silently coalesced. A failed check leaves the current service running and records the failure. A newer pushed fix can proceed; the failed revision is retained in the failure history rather than blocking its own repair forever. The latest failed revision retries no more often than every 15 minutes. A force-pushed main that is not descended from the deployed revision is rejected.
+
+`mac_mini.py` runs lint, formatting, offline tests, and deployment tests in an isolated source snapshot, then builds an ARM64 image labeled with the exact commit. It stops the current application, verifies SQLite integrity, archives and compares both named volumes, and starts the replacement behind an activation gate. User mutations and all background schedulers remain paused until read-only revision, authorization, schema, and integrity checks pass.
+
+A failure before activation stops the new writer and restores the verified snapshot. After activation, rollback preserves the database and outbound-send receipts: it changes code only. All migrations in this change are additive. Backups include the mail encryption key in `/conf`, so treat them as private. They are stored in a mode-0700 deployment directory, with mode-0600 archives.
+
+## Installed operations
+
+Machine configuration and logs live under `/Users/renas/.config/fredy-live`, outside Git. The worker is copied there only after a successful checked deployment, so ordinary edits cannot change the running worker. The LaunchAgent is `net.fredy.autodeploy`.
+
+```sh
+python3 /Users/renas/.config/fredy-live/mac_mini.py --config /Users/renas/.config/fredy-live/deploy.json status
+python3 /Users/renas/.config/fredy-live/mac_mini.py --config /Users/renas/.config/fredy-live/deploy.json poll
+launchctl print gui/$(id -u)/net.fredy.autodeploy
+```
+
+The worker serializes all commands with a lock. Deployment logs and verified snapshots are under `deployments/`; `deployment-state.json` records the served commit and previous image/Compose file. A failed check does not switch the live service. Do not restore snapshots after the service has accepted user changes or sent mail.
+
+## Personal Jev key
+
+Apartment fit uses only `OPENROUTER_API_KEY_PERSONAL`, never a shared/company key. Add it to the current Mac user's Keychain, entering it at the password prompt:
+
+```sh
+security add-generic-password -U -a "$(id -un)" -s OPENROUTER_API_KEY_PERSONAL -w
+```
+
+Then run `refresh` to recreate the current revision with the key injected from Keychain:
+
+```sh
+python3 /Users/renas/.config/fredy-live/mac_mini.py --config /Users/renas/.config/fredy-live/deploy.json refresh
+```
+
+The key is not written into the repository, generated Compose file, logs, or database. Docker receives it in the container environment; administrators of the host/Docker daemon can inspect container credentials. The application reports only whether the provider is configured. SMTP/IMAP credentials are entered separately in the Applications page and encrypted in SQLite with the private key in `/conf`.
+
+## Local verification
+
+```sh
+python3 -m unittest discover -s test/deploy -p 'test_*.py'
+yarn lint
+yarn format:check
+yarn test:offline
+```
+
+The deployment tests inject snapshot, startup, activation, and postrelease failures. The live private URL remains `https://olympus.ibex-cobia.ts.net:9998`.
+
+If recovery itself fails, the worker records `recovery_required` and stops all future deployments, including newer commits. Stop the LaunchAgent, preserve both volumes and snapshots, and inspect the failed deployment log before a deliberate recovery. This condition is different from an ordinary failed build/check, which leaves the current service running and permits a newer fix.

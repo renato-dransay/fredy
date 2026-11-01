@@ -29,6 +29,8 @@ async function buildServer() {
     getPublicSettings: async () => ({}),
     upsertSettings: (values) => Object.assign(stored, values),
   }));
+  // This suite exercises routing settings, not demo-account/database provisioning.
+  vi.doMock(root + '/lib/services/storage/userStorage.js', () => ({ ensureDemoUserExists: vi.fn() }));
 
   const plugin = (await import(root + '/lib/api/routes/generalSettingsRoute.js')).default;
   const app = Fastify();

@@ -34,18 +34,19 @@ describe('navModel', () => {
     expect(routeKeysOf(navTreeFor(true))).toContain('/admin');
   });
 
-  it('offers seven destinations to an admin and six to everyone else', () => {
+  it('offers the application tracker alongside existing destinations', () => {
     // The searches straight under the overview: they are what everything below them is found by.
     expect(routeKeysOf(navTreeFor(true))).toEqual([
       '/dashboard',
       '/jobs',
       '/listings',
+      '/applications',
       '/map',
       '/finance',
       '/settings',
       '/admin',
     ]);
-    expect(routeKeysOf(navTreeFor(false))).toHaveLength(6);
+    expect(routeKeysOf(navTreeFor(false))).toHaveLength(7);
   });
 
   it('keeps every destination at the top level, one click away', () => {
@@ -70,6 +71,7 @@ describe('navModel', () => {
     ['/jobs/edit/abc-123', '/jobs'],
     ['/listings', '/listings'],
     ['/listings/listing/42', '/listings'],
+    ['/applications', '/applications'],
     ['/map', '/map'],
     ['/finance', '/finance'],
     ['/settings', '/settings'],

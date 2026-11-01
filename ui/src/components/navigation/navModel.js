@@ -60,6 +60,7 @@ export const NAV_TREE = [
   { key: '/dashboard', labelKey: 'nav.dashboard', section: 'work' },
   { key: '/jobs', labelKey: 'nav.jobs', section: 'work' },
   { key: '/listings', labelKey: 'nav.listings', section: 'work' },
+  { key: '/applications', labelKey: 'search.applicationsTitle', section: 'work' },
   { key: '/map', labelKey: 'nav.map', section: 'work' },
   { key: '/finance', labelKey: 'nav.finance', section: 'work' },
   { key: '/settings', labelKey: 'nav.settings', section: 'personal' },

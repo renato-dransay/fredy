@@ -20,6 +20,8 @@ import { lagecheckUrl } from '../../services/listings/lagecheckUrl.js';
 import { xhrPost, xhrGet, xhrDelete, errorMessage } from '../../services/xhr.js';
 import ListingDeletionModal from '../../components/ListingDeletionModal.jsx';
 import ApplicationModal from './components/ApplicationModal.jsx';
+import FitCard from '../../components/searchWorkspace/FitCard.jsx';
+import ApplicationTracker from '../../components/searchWorkspace/ApplicationTracker.jsx';
 
 import IconEuro from '../../components/icons/IconEuro.jsx';
 import ScamPanel from './components/ScamPanel.jsx';
@@ -540,6 +542,7 @@ export default function ListingDetail() {
       <div className="listing-detail__grid">
         <div className="listing-detail__main">
           <ListingPictures listing={listing} />
+          <ApplicationTracker key={listingId} listingId={listingId} />
 
           <div className="listing-detail__sec--description">
             <PhoneCollapse
@@ -602,6 +605,7 @@ export default function ListingDetail() {
         </div>
 
         <aside className="listing-detail__rail">
+          <FitCard listingId={listingId} listing={listing} />
           <div className="listing-detail__sec--keyfacts">
             <ListingKeyFacts listing={listing} priceHistory={priceHistory} financeThresholds={financeThresholds} />
           </div>
@@ -677,8 +681,6 @@ export default function ListingDetail() {
         visible={applicationVisible}
         listingId={listing.id}
         onCancel={() => setApplicationVisible(false)}
-        // Copying the letter sets the status, so the segment in the title block has to follow it.
-        onApplied={() => actions.listingsData.getListing(listingId)}
       />
     </div>
   );

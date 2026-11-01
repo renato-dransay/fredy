@@ -43,6 +43,8 @@ const PreferencesPage = lazy(() => import('./views/settings/pages/PreferencesPag
 const TravelTimePage = lazy(() => import('./views/settings/pages/TravelTimePage'));
 const ListingDetailsPage = lazy(() => import('./views/settings/pages/ListingDetailsPage'));
 const ApplicationPage = lazy(() => import('./views/settings/pages/ApplicationPage'));
+const SearchProfilePage = lazy(() => import('./views/settings/pages/SearchProfilePage'));
+const ApplicationsPage = lazy(() => import('./views/applications/ApplicationsPage'));
 const NotificationsPage = lazy(() => import('./views/settings/pages/NotificationsPage'));
 const ConnectionsPage = lazy(() => import('./views/settings/pages/ConnectionsPage'));
 const AdminLayout = lazy(() => import('./views/admin/AdminLayout'));
@@ -252,6 +254,7 @@ export default function FredyApp() {
                       <Route path="/dashboard" element={<Dashboard />} />
                       <Route path="/jobs" element={<Jobs />} />
                       <Route path="/listings" element={<Listings />} />
+                      <Route path="/applications" element={<ApplicationsPage />} />
                       <Route path="/listings/listing/:listingId" element={<ListingDetail />} />
                       <Route path="/map" element={<MapView />} />
                       <Route path="/finance" element={<FinanceCalculator />} />
@@ -265,6 +268,7 @@ export default function FredyApp() {
                         <Route path="travel-time" element={<TravelTimePage />} />
                         <Route path="listings" element={<ListingDetailsPage />} />
                         <Route path="application" element={<ApplicationPage />} />
+                        <Route path="search-profile" element={<SearchProfilePage />} />
                         <Route path="notifications" element={<NotificationsPage />} />
                         <Route path="connections" element={<ConnectionsPage />} />
                       </Route>

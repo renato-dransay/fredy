@@ -1,0 +1,174 @@
+/*
+ * Copyright (c) 2026 by Christian Kellner.
+ * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
+ */
+
+@import '../../tokens.less';
+
+.searchWorkspace {
+  display: flex;
+  flex-direction: column;
+  gap: @space-4;
+  min-width: 0;
+  color: @color-text;
+
+  &__card {
+    padding: @space-4;
+    border: 1px solid @color-border;
+    border-radius: @radius-card;
+    background: @color-surface;
+    min-width: 0;
+  }
+  &__card h2,
+  &__card h3 {
+    margin: 0 0 @space-3;
+  }
+  &__card p {
+    color: @color-muted;
+    line-height: 1.6;
+  }
+  &__fields {
+    display: grid;
+    gap: @space-3;
+    grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
+  }
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: @space-2;
+    min-width: 0;
+  }
+  &__field > span {
+    font-size: @text-sm;
+    color: @color-muted;
+  }
+  input,
+  select,
+  textarea {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    padding: @space-2 @space-3;
+    border: 1px solid @color-input-border;
+    border-radius: @radius-btn;
+    background: @color-input-bg;
+    color: @color-text;
+    font: inherit;
+  }
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  button:focus-visible,
+  a:focus-visible {
+    outline: 2px solid @color-accent;
+    outline-offset: 2px;
+  }
+  textarea {
+    min-height: 100px;
+    resize: vertical;
+  }
+  input[type='checkbox'] {
+    width: auto;
+    accent-color: @color-accent;
+  }
+  &__check {
+    display: flex;
+    gap: @space-2;
+    align-items: flex-start;
+    line-height: 1.5;
+  }
+  &__actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: @space-2;
+    margin-top: @space-3;
+  }
+  &__actions a,
+  a {
+    color: @color-link;
+  }
+  &__criterion {
+    border-top: 1px solid @color-border;
+    padding: @space-3 0;
+  }
+  &__summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: @space-3;
+    align-items: baseline;
+  }
+  &__score {
+    font-size: 1.8rem;
+    font-weight: @weight-medium;
+  }
+  &__muted {
+    color: @color-muted;
+    font-size: @text-sm;
+  }
+  &__notice {
+    padding: @space-3;
+    border-left: 3px solid @color-info;
+    background: @color-fill-subtle;
+  }
+  &__notice--warning {
+    border-color: @color-warning;
+  }
+  &__notice--error {
+    border-color: @color-error;
+  }
+  &__evidence {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-size: @text-sm;
+    color: @color-muted;
+  }
+  &__timeline {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  &__timeline li {
+    border-top: 1px solid @color-border;
+    padding: @space-3 0;
+  }
+  &__timeline p {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    margin-bottom: 0;
+  }
+  &__table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  &__table th,
+  &__table td {
+    text-align: left;
+    padding: @space-3;
+    border-bottom: 1px solid @color-border;
+    vertical-align: top;
+  }
+  &__scroll {
+    overflow-x: auto;
+  }
+  &__badge {
+    display: inline-block;
+    border: 1px solid @color-border;
+    border-radius: @radius-chip;
+    padding: 2px @space-2;
+    font-size: @text-sm;
+  }
+  &__status {
+    min-height: 1.5em;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  @media (max-width: 600px) {
+    &__card {
+      padding: @space-3;
+    }
+    &__actions > button {
+      flex-grow: 1;
+    }
+  }
+}

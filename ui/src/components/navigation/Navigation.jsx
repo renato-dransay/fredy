@@ -47,6 +47,7 @@ const MAX_TIMER_MS = 2 ** 31 - 1;
 const ICONS = {
   '/dashboard': IconOverview,
   '/listings': IconListings,
+  '/applications': IconListings,
   '/map': IconMap,
   '/jobs': IconSearches,
   '/finance': IconFinance,
