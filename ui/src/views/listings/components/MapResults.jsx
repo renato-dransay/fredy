@@ -16,10 +16,18 @@ import { useLocale, useTranslation } from '../../../services/i18n/i18n.jsx';
  * Saved photos and fit receipts use the same components as the listings overview. Locating a
  * result opens its pin; the title is a real link to details, also available to keyboard users.
  * @param {{listings: Object[], selectedId: string|null, onLocate: (id: string) => void,
- * onHighlight: (id: string|null) => void, loading?: boolean}} props
+ * onHighlight: (id: string|null) => void, loading?: boolean, totalCount?: number, onShowAll?: () => void}} props
  * @returns {React.ReactElement}
  */
-export default function MapResults({ listings, selectedId, onLocate, onHighlight, loading = false }) {
+export default function MapResults({
+  listings,
+  selectedId,
+  onLocate,
+  onHighlight,
+  loading = false,
+  totalCount = listings.length,
+  onShowAll,
+}) {
   const t = useTranslation();
   const locale = useLocale();
   return (
@@ -29,6 +37,11 @@ export default function MapResults({ listings, selectedId, onLocate, onHighlight
           {loading ? t('map.results.loading') : t('map.results.count', { count: listings.length })}
         </h2>
         <p>{t('map.results.hint')}</p>
+        {onShowAll && (
+          <button className="map-results__showAll" disabled={loading || totalCount === 0} onClick={onShowAll}>
+            {t('map.results.showAll', { count: totalCount })}
+          </button>
+        )}
       </header>
       <div className="map-results__scroll">
         {!loading && listings.length === 0 && <p className="map-results__empty">{t('map.results.empty')}</p>}
@@ -66,7 +79,7 @@ export default function MapResults({ listings, selectedId, onLocate, onHighlight
                   .filter(Boolean)
                   .join(' · ')}
               </span>
-              <FitSummary summary={listing.fitSummary} />
+              <FitSummary compact summary={listing.fitSummary} />
               <button className="map-results__locate" onClick={() => onLocate(listing.id)}>
                 {t('map.results.showPin')}
               </button>

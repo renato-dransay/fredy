@@ -25,6 +25,7 @@ vi.mock('../../lib/services/storage/listingMediaStorage.js', () => ({ getListing
 
 import SqliteConnection from '../../lib/services/storage/SqliteConnection.js';
 import { up } from '../../lib/services/storage/migrations/sql/54.apartment-fit.js';
+import { up as addInstructions } from '../../lib/services/storage/migrations/sql/57.fit-instructions.js';
 import { attachFitSummaries, saveFitProfile, saveFitResult } from '../../lib/services/fit/storage.js';
 import { fitEvidenceHash } from '../../lib/services/fit/evaluate.js';
 import listingsPlugin from '../../lib/api/routes/listingsRouter.js';
@@ -48,6 +49,7 @@ beforeEach(async () => {
     "CREATE TABLE users(id TEXT PRIMARY KEY);CREATE TABLE listings(id TEXT PRIMARY KEY);INSERT INTO users VALUES('alice'),('bob');INSERT INTO listings VALUES('one'),('two');",
   );
   up(ctx.db);
+  addInstructions(ctx.db);
   ctx.rows = [{ ...listing }, { ...listing, id: 'two' }];
   ctx.userId = 'alice';
   profile = saveFitProfile('alice', { document: 'Private preferences', criteria: [requirement] });

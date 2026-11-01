@@ -13,10 +13,7 @@ import { relativeTime } from '../../../services/time/relativeTime.js';
 import { useSelector } from '../../../services/state/store.js';
 import ListingPhoto from '../../listings/ListingPhoto.jsx';
 import StatusControl from '../../listings/StatusControl.jsx';
-import AffordabilityChip from '../../listings/AffordabilityChip.jsx';
-import { rentIncludesCharges } from '../../../services/finance/rentBasis.js';
 import PriceChangeBadge from '../../listings/PriceChangeBadge.jsx';
-import PricePerSqmBadge from '../../listings/PricePerSqmBadge.jsx';
 import ScamBadge from '../../listings/ScamBadge.jsx';
 import ExclusiveBadge from '../../listings/ExclusiveBadge.jsx';
 import WatchToggle from '../../listings/WatchToggle.jsx';
@@ -38,7 +35,6 @@ import { useTranslation, useLocale } from '../../../services/i18n/i18n.jsx';
  */
 function whereLine(item, locale, t) {
   return [
-    item.address,
     item.rooms == null ? null : t('listing.detail.fieldRoomsValue', { count: formatDecimal(item.rooms, locale) }),
     item.size == null ? null : `${formatDecimal(item.size, locale)} m²`,
   ]
@@ -108,14 +104,6 @@ const ListingsGrid = ({
               {item.price && (
                 <div className="listingsGrid__card__price">
                   <span className="listingsGrid__card__amount">{formatEuroPrice(item.price, locale)}</span>
-                  {/* Next to the price rather than on a line of its own: it is the same figure said
-                      a second way, and reading the two together is the whole point. */}
-                  <PricePerSqmBadge listing={item} />
-                  <AffordabilityChip
-                    verdict={item.affordabilityVerdict}
-                    dealType={item.dealType}
-                    chargesIncluded={rentIncludesCharges(item)}
-                  />
                   <PriceChangeBadge
                     price={item.price}
                     previousPrice={item.previous_price}
@@ -137,8 +125,13 @@ const ListingsGrid = ({
               )}
 
               <ExclusiveBadge listing={item} />
-              <FitSummary summary={item.fitSummary} />
+              {item.address && (
+                <span className="listingsGrid__card__meta" title={item.address}>
+                  {item.address}
+                </span>
+              )}
               {where && <span className="listingsGrid__card__meta">{where}</span>}
+              <FitSummary compact summary={item.fitSummary} />
               {/* Compact on purpose: on a card the commute is a number you scan past twenty others,
                   not something you read. The detail page shows the full picture. */}
               <CommuteBadge travelTimes={item.travelTimes} jobId={item.job_id} />

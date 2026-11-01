@@ -6,20 +6,23 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { Button } from '@douyinfe/semi-ui-19';
-import { useTranslation } from '../../services/i18n/i18n.jsx';
+import { useLocale, useTranslation } from '../../services/i18n/i18n.jsx';
+import { criterionPresentation } from '../../services/listings/criterionPresentation.js';
 import { errorMessage } from '../../services/xhr.js';
 import { loadFit, evaluateFit } from '../../services/searchWorkspaceClient.js';
 import FitSummary from './FitSummary.jsx';
+import FitCriterionIcon from './FitCriterionIcon.jsx';
 import './SearchWorkspace.less';
 import './FitCard.less';
 
 /**
- * Show saved fit criteria as compact pros, cons and unverified chips, without source excerpts.
+ * Show keyword chips with topic icons; native disclosures reveal each complete requirement.
  * @param {{listingId: string, listing: object}} props Listing and its source-refresh snapshot.
  * @returns {React.ReactElement}
  */
 export default function FitCard({ listingId, listing }) {
   const t = useTranslation();
+  const locale = useLocale();
   const [state, setState] = useState({ result: null, stale: false });
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState('');
@@ -99,16 +102,29 @@ export default function FitCard({ listingId, listing }) {
                   {t(`search.fitGroup.${verdict}`)}
                 </span>
                 <ul className="fitCard__chips" aria-labelledby={`fit-${listingId}-${verdict}`}>
-                  {criteria.map((criterion) => (
-                    <li className={`fitCard__chip fitCard__chip--${verdict}`} key={criterion.id} title={criterion.text}>
-                      <span className="fitCard__chipText">{criterion.text}</span>
-                      {criterion.required && (
-                        <span className="fitCard__required" aria-label={t('search.required')}>
-                          *
-                        </span>
-                      )}
-                    </li>
-                  ))}
+                  {criteria.map((criterion) => {
+                    const presentation = criterionPresentation(criterion, {
+                      t,
+                      locale,
+                      index: result.criteria.indexOf(criterion),
+                    });
+                    return (
+                      <li key={criterion.id}>
+                        <details className="fitCard__criterion">
+                          <summary className={`fitCard__chip fitCard__chip--${verdict}`}>
+                            <FitCriterionIcon topic={presentation.icon} />
+                            <span className="fitCard__chipText">{presentation.label}</span>
+                            {criterion.required && (
+                              <span className="fitCard__required" aria-label={t('search.required')}>
+                                *
+                              </span>
+                            )}
+                          </summary>
+                          <p className="fitCard__requirement">{criterion.text}</p>
+                        </details>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             );

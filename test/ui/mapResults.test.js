@@ -47,6 +47,24 @@ describe('map result cards', () => {
     expect(link.props.to).toBe('/listings/listing/one');
     expect(link.props.children).toBe(listing.title);
   });
+  it('offers a recovery action for listings outside the viewport without changing filters', () => {
+    const onShowAll = vi.fn();
+    const tree = MapResults({
+      listings: [],
+      selectedId: null,
+      onLocate: vi.fn(),
+      onHighlight: vi.fn(),
+      totalCount: 8,
+      onShowAll,
+    });
+    const button = nodes(tree, 'button')[0];
+    expect(button.props.disabled).toBe(false);
+    expect(button.props.children).toContain('8');
+    button.props.onClick();
+    expect(onShowAll).toHaveBeenCalledOnce();
+    const empty = MapResults({ listings: [], totalCount: 0, onShowAll });
+    expect(nodes(empty, 'button')[0].props.disabled).toBe(true);
+  });
   it('distinguishes loading from a viewport with no results', () => {
     const props = { listings: [], selectedId: null, onLocate: vi.fn(), onHighlight: vi.fn() };
     const loading = MapResults({ ...props, loading: true });

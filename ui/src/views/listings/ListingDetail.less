@@ -165,7 +165,7 @@
     }
   }
 
-  /* One column. The fit assessment stays near the title, then pictures and the price. */
+  /* One column: photograph and price lead, followed by assessment and optional workspaces. */
   @media (max-width: 1180px) {
     &__grid {
       display: flex;
@@ -182,36 +182,40 @@
       display: contents;
     }
 
-    &__sec--fit {
+    &__sec--media {
       order: 0;
     }
-    &__sec--media {
+    &__sec--keyfacts {
       order: 1;
     }
-    &__sec--keyfacts {
+    &__sec--fit {
       order: 2;
     }
-    &__sec--description {
+    &__sec--application {
       order: 3;
     }
-    &__sec--location {
+    &__sec--description {
       order: 4;
     }
-    &__sec--origin {
+    &__sec--location {
       order: 5;
     }
-    &__sec--finance {
+    &__sec--origin {
       order: 6;
     }
-    &__sec--transit {
+    &__sec--finance {
       order: 7;
     }
-    &__sec--connectivity {
+    &__sec--transit {
       order: 8;
     }
-    &__sec--workspace {
+    &__sec--connectivity {
       order: 9;
     }
+    &__sec--workspace {
+      order: 10;
+    }
+
   }
 
   /* Room for the action bar, which is fixed to the bottom edge at this width. */

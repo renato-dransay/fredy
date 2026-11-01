@@ -2,6 +2,11 @@
  * Copyright (c) 2026 by Christian Kellner.
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
+
+/*
+ * Copyright (c) 2026 by Christian Kellner.
+ * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
+ */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Database from 'better-sqlite3';
 import Fastify from 'fastify';
@@ -21,6 +26,7 @@ vi.mock('../../lib/api/security.js', () => ({ isAdmin: () => false }));
 vi.mock('../../lib/services/fit/evaluate.js', async (original) => ({ ...(await original()), evaluateFit: vi.fn() }));
 import fitPlugin from '../../lib/api/routes/fitRouter.js';
 import { up } from '../../lib/services/storage/migrations/sql/54.apartment-fit.js';
+import { up as addInstructions } from '../../lib/services/storage/migrations/sql/57.fit-instructions.js';
 import { getFitProfile, getFitResult, saveFitProfile, saveFitResult } from '../../lib/services/fit/storage.js';
 import { evaluateFit, fitEvidenceHash } from '../../lib/services/fit/evaluate.js';
 import { FitProviderError } from '../../lib/services/fit/jev.js';
@@ -63,6 +69,7 @@ beforeEach(() => {
     "PRAGMA foreign_keys=ON; CREATE TABLE users(id TEXT PRIMARY KEY); CREATE TABLE listings(id TEXT PRIMARY KEY); INSERT INTO users VALUES ('alice'),('bob'); INSERT INTO listings VALUES('one');",
   );
   up(ctx.db);
+  addInstructions(ctx.db);
   ctx.access = new Set(['alice:one', 'bob:one']);
   ctx.demo = false;
   ctx.listing = { id: 'one', title: 'Flat', rooms: 3, description: 'Three rooms' };
@@ -122,6 +129,56 @@ describe('fit API private persisted state', () => {
     expect((await bob.inject('/api/fit/profile')).json().profile).toMatchObject({ document: '', version: 0 });
     await alice.inject({ method: 'POST', url: '/api/fit/profile', payload: profileBody });
     expect(getFitProfile('alice').version).toBe(2);
+  });
+  it('round-trips private instructions and chip choices, invalidates saved receipts, and preserves guidance for older clients', async () => {
+    const alice = await appFor('alice');
+    const bob = await appFor('bob');
+    const response = await alice.inject({
+      method: 'POST',
+      url: '/api/fit/profile',
+      payload: {
+        ...profileBody,
+        instructions: 'Require explicit pet permission.',
+        criteria: [{ ...criterion, label: 'Rooms', icon: 'rooms' }],
+      },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().profile).toMatchObject({
+      instructions: 'Require explicit pet permission.',
+      criteria: [{ label: 'Rooms', icon: 'rooms' }],
+    });
+    expect((await bob.inject('/api/fit/profile')).json().profile.instructions).not.toBe(
+      'Require explicit pet permission.',
+    );
+    await alice.inject({ method: 'POST', url: '/api/fit/listings/one/evaluate' });
+    expect((await alice.inject('/api/fit/listings/one')).json().stale).toBe(false);
+    await alice.inject({
+      method: 'POST',
+      url: '/api/fit/profile',
+      payload: { ...profileBody, instructions: 'Ask for evidence.' },
+    });
+    expect((await alice.inject('/api/fit/listings/one')).json().stale).toBe(true);
+    await alice.inject({ method: 'POST', url: '/api/fit/profile', payload: profileBody });
+    expect((await alice.inject('/api/fit/profile')).json().profile.instructions).toBe('Ask for evidence.');
+    for (const instructions of [42, 'x'.repeat(4001)]) {
+      expect(
+        (await alice.inject({ method: 'POST', url: '/api/fit/profile', payload: { ...profileBody, instructions } }))
+          .statusCode,
+      ).toBe(400);
+    }
+    await alice.inject({ method: 'POST', url: '/api/fit/profile', payload: { ...profileBody, instructions: '' } });
+    expect((await alice.inject('/api/fit/profile')).json().profile.instructions).toContain('Do not equate total rooms');
+  });
+  it('rejects an assessment completed after instructions changed', async () => {
+    const app = await appFor();
+    saveFitProfile('alice', profileBody);
+    evaluateFit.mockImplementation(async (profile, listing) => {
+      saveFitProfile('alice', { ...profileBody, instructions: 'New guidance during inference.' });
+      return resultFor(profile, listing);
+    });
+    const response = await app.inject({ method: 'POST', url: '/api/fit/listings/one/evaluate' });
+    expect(response.statusCode).toBe(409);
+    expect(getFitResult('alice', 'one')).toBeNull();
   });
   it('saves results per user and reuses an unchanged valid assessment without paid calls', async () => {
     saveFitProfile('alice', profileBody);

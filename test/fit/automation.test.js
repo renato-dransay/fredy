@@ -44,6 +44,7 @@ import { getFitProfile, getFitResult, saveFitProfile, saveFitResult } from '../.
 import { FitProviderError } from '../../lib/services/fit/jev.js';
 import { getListingById } from '../../lib/services/storage/listingsStorage.js';
 import { up } from '../../lib/services/storage/migrations/sql/54.apartment-fit.js';
+import { up as addInstructions } from '../../lib/services/storage/migrations/sql/57.fit-instructions.js';
 import fitAutomationPlugin from '../../lib/api/routes/fitAutomationRouter.js';
 
 const apps = [];
@@ -120,6 +121,7 @@ beforeEach(() => {
     CREATE TABLE listings(id TEXT PRIMARY KEY,job_id TEXT,provider TEXT,created_at INTEGER,
       is_active INTEGER,manually_deleted INTEGER,title TEXT,description TEXT,size REAL);`);
   up(ctx.db);
+  addInstructions(ctx.db);
   ctx.jobs = new Map([
     [
       'a',

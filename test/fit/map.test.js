@@ -16,6 +16,7 @@ vi.mock('../../lib/services/storage/SqliteConnection.js', () => ({
 vi.mock('../../lib/services/similarity-check/similarityCache.js', () => ({ removeEntry: vi.fn() }));
 vi.mock('../../lib/api/security.js', () => ({ isAdmin: () => false }));
 import { up } from '../../lib/services/storage/migrations/sql/54.apartment-fit.js';
+import { up as addInstructions } from '../../lib/services/storage/migrations/sql/57.fit-instructions.js';
 import { saveFitProfile, saveFitResult } from '../../lib/services/fit/storage.js';
 import { fitEvidenceHash } from '../../lib/services/fit/evaluate.js';
 import listingsPlugin from '../../lib/api/routes/listingsRouter.js';
@@ -57,6 +58,7 @@ beforeEach(async () => {
     "INSERT INTO listings(id,job_id,title,latitude,longitude) VALUES('hidden','private','Private flat',52.52,13.4)",
   );
   up(ctx.db);
+  addInstructions(ctx.db);
   const profile = saveFitProfile('alice', { document: 'Private preferences', criteria: [] });
   saveFitResult('alice', listing.id, {
     score: 90,

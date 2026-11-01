@@ -76,6 +76,23 @@ describe('MapFilterPanel', () => {
     hookState.cursor = 0;
   });
 
+  it('keeps the legend and fullscreen reachable while filters are closed at every layout size', () => {
+    const legend = createElement('details', null, createElement('summary', null, 'Pin legend'));
+    const props = { foldable: true, title: 'Filters', headerExtra: expandButton, children: filters, footer: legend };
+    const closed = render(props);
+    expect(contains(closed, filters)).toBe(false);
+    expect(contains(closed, legend)).toBe(true);
+    expect(contains(headingOf(closed), expandButton)).toBe(true);
+    expect(toggleOf(closed).props['aria-expanded']).toBe(false);
+    toggleOf(closed).props.onClick();
+    const opened = render(props);
+    expect(contains(opened, filters)).toBe(true);
+    expect(contains(opened, legend)).toBe(true);
+    expect(contains(headingOf(opened), expandButton)).toBe(true);
+    toggleOf(opened).props.onClick();
+    expect(contains(render(props), legend)).toBe(true);
+  });
+
   describe('on a phone', () => {
     it('starts folded: the heading is a collapsed toggle and nothing below it is rendered', () => {
       const tree = render(phone);

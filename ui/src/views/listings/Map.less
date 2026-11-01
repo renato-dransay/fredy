@@ -55,7 +55,7 @@
 .map-panel.map-panel--folded {
   width: auto;
   padding: @space-1 @space-2 @space-1 @space-4;
-  border-radius: @radius-pill;
+  border-radius: @radius-card;
 }
 
 /*
@@ -517,4 +517,36 @@
     z-index: 2;
     box-shadow: 0 0 0 3px @color-surface, 0 0 0 5px currentColor;
   }
+}
+
+.map-panel__disclosure,
+.map-panel__legendDisclosure {
+  border-top: 1px solid @color-border;
+  padding-top: @space-2;
+  margin-top: @space-2;
+  summary {
+    cursor: pointer;
+    min-height: 28px;
+    font-size: @text-sm;
+    color: @color-text;
+    &:focus-visible { outline: 2px solid @color-info; outline-offset: 2px; }
+  }
+  .mapLegend { max-width: 270px; padding-bottom: @space-2; }
+}
+.map-panel--folded .map-panel__legendDisclosure {
+  border-top: 0;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+.map-results__showAll {
+  padding: @space-1 @space-2;
+  border: 1px solid @color-border-bright;
+  border-radius: @radius-btn;
+  background: @color-fill-subtle;
+  color: @color-text;
+  font: inherit;
+  font-size: @text-xs;
+  cursor: pointer;
+  &:disabled { opacity: 0.5; cursor: default; }
 }

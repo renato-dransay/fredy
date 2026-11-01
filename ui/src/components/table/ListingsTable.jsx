@@ -10,10 +10,7 @@ import { listingPictureSrc } from '../../services/listings/listingPictures.js';
 import { formatEuroPrice } from '../../services/price/priceService.js';
 import * as timeService from '../../services/time/timeService.js';
 import StatusControl from '../listings/StatusControl.jsx';
-import AffordabilityChip from '../listings/AffordabilityChip.jsx';
-import { rentIncludesCharges } from '../../services/finance/rentBasis.js';
 import PriceChangeBadge from '../listings/PriceChangeBadge.jsx';
-import PricePerSqmBadge from '../listings/PricePerSqmBadge.jsx';
 import ScamBadge from '../listings/ScamBadge.jsx';
 import ExclusiveBadge from '../listings/ExclusiveBadge.jsx';
 import WatchToggle from '../listings/WatchToggle.jsx';
@@ -85,7 +82,7 @@ const ListingsTable = ({
               </Link>
             )}
             <ExclusiveBadge listing={item} />
-            <FitSummary summary={item.fitSummary} />
+            <FitSummary compact summary={item.fitSummary} />
             {/* Under the headline rather than in front of it. In front, the badge had to give up
                 its word to leave room for the title, and a warning without a word is a shape. */}
             {(!item.is_active || item.scam_signals?.length > 0 || item.scam_override != null) && (
@@ -101,12 +98,6 @@ const ListingsTable = ({
               <>
                 <span className="listingsTable__row__amount">{formatEuroPrice(item.price, locale)}</span>
                 <span className="listingsTable__row__perSqm">
-                  <PricePerSqmBadge listing={item} />
-                  <AffordabilityChip
-                    verdict={item.affordabilityVerdict}
-                    dealType={item.dealType}
-                    chargesIncluded={rentIncludesCharges(item)}
-                  />
                   <PriceChangeBadge
                     price={item.price}
                     previousPrice={item.previous_price}

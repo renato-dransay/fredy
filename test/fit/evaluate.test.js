@@ -8,6 +8,7 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 import { describe, it, expect } from 'vitest';
+import { DEFAULT_JEV_INSTRUCTIONS } from '../../lib/services/fit/instructions.js';
 import { normalizeProfile } from '../../lib/services/fit/profile.js';
 import {
   evaluateFit,
@@ -50,6 +51,21 @@ describe('apartment requirements validation', () => {
     { criteria: Array.from({ length: 31 }, (_, i) => requirement({ id: `c${i}` })) },
   ])('rejects malformed or unbounded input %#', (input) => {
     expect(() => normalizeProfile(input)).toThrow();
+  });
+  it('bounds custom instructions and chip metadata, preserving only supported values', () => {
+    expect(
+      normalizeProfile({
+        criteria: [requirement({ label: '  Bedrooms ', icon: 'rooms' })],
+        instructions: ' Be precise. ',
+      }),
+    ).toMatchObject({ instructions: 'Be precise.', criteria: [{ label: 'Bedrooms', icon: 'rooms' }] });
+    for (const input of [
+      { instructions: 'x'.repeat(4001), criteria: [] },
+      { instructions: {}, criteria: [] },
+      { criteria: [requirement({ label: 'x'.repeat(33) })] },
+      { criteria: [requirement({ icon: 'arbitrary-html' })] },
+    ])
+      expect(() => normalizeProfile(input)).toThrow();
   });
   it('normalizes a safe transit-line rule', () => {
     const result = normalizeProfile({
@@ -178,5 +194,37 @@ describe('fit scoring and provenance', () => {
     expect(isFitStale(result, profile, listing, Date.now() + 61000)).toBe(true);
     result.criteria[0].verdict = 'met';
     expect(isFitStale(result, profile, listing, Date.now() + 61000)).toBe(false);
+  });
+});
+
+describe('custom evaluator instructions', () => {
+  it('keeps default-guidance receipts fresh across migration, while customized guidance changes their hash', () => {
+    const legacy = { document: '', criteria: [requirement()], version: 1 };
+    const listing = { title: 'Flat' };
+    expect(fitEvidenceHash({ ...legacy, instructions: DEFAULT_JEV_INSTRUCTIONS }, listing)).toBe(
+      fitEvidenceHash(legacy, listing),
+    );
+    expect(fitEvidenceHash({ ...legacy, instructions: 'Different instructions' }, listing)).not.toBe(
+      fitEvidenceHash(legacy, listing),
+    );
+  });
+  it('passes private instructions to the real semantic entry point and binds freshness to them', async () => {
+    const profile = {
+      version: 1,
+      document: '',
+      instructions: 'Explicit long-term lease only.',
+      criteria: [requirement()],
+    };
+    const listing = { title: 'Flat', description: 'An indefinite lease' };
+    let received;
+    const result = await evaluateFit(profile, listing, {
+      semantic: async (criteria, sources, options) => {
+        received = options;
+        return { model: 'test', results: criteria.map((c) => ({ ...c, verdict: 'unknown', evidence: [] })) };
+      },
+    });
+    expect(received).toEqual({ instructions: profile.instructions });
+    expect(isFitStale(result, profile, listing)).toBe(false);
+    expect(isFitStale(result, { ...profile, instructions: 'Different guidance.' }, listing)).toBe(true);
   });
 });

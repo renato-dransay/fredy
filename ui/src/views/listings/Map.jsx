@@ -17,6 +17,7 @@ import {
   getBoundsFromCoords,
   groupListingsByPosition,
   groupFitTone,
+  hasMapPosition,
   listingsInViewport,
 } from './mapUtils.js';
 import { Select, Switch, Toast, Typography } from '@douyinfe/semi-ui-19';
@@ -219,7 +220,6 @@ export default function MapView() {
     priceMin: urlPriceMin,
     priceMax: urlPriceMax,
   });
-  const [canvasWidth, setCanvasWidth] = useState(0);
 
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [listingToDelete, setListingToDelete] = useState(null);
@@ -251,16 +251,13 @@ export default function MapView() {
   };
 
   useEffect(() => {
-    // The open end is what the loaded listings fill in: until they arrive there is no ceiling to
-    // put on the slider. The lower end belongs to the user, so it is taken from the URL rather
-    // than zeroed - a bookmarked `?priceMin=300000` used to arrive here as no filter at all,
-    // because this reset both ends whenever `priceMax` happened to be absent.
-    if (urlPriceMax === null) {
-      const range = [urlPriceMin ?? 0, getMaxPrice()];
-      setPriceRange(range);
-      setFilterRange(range);
-    }
-  }, [listings]);
+    // Follow bookmark/history changes as well as new data. The same mounted map can receive a
+    // new URL; only initializing the slider once left the filter badge and pins disagreeing.
+    clearTimeout(priceCommitTimer.current);
+    const range = [urlPriceMin ?? 0, urlPriceMax ?? getMaxPrice()];
+    setPriceRange(range);
+    setFilterRange(range);
+  }, [listings, urlPriceMin, urlPriceMax]);
 
   const getMaxPrice = () => {
     return listings.reduce((acc, item) => {
@@ -277,6 +274,7 @@ export default function MapView() {
     // one it has nothing to fail, and hiding it always left it off the map with no filter active.
     const priceLimited = urlPriceMin != null || urlPriceMax != null;
     return filterByMinFit(listings, minFit)
+      .filter(hasMapPosition)
       .filter((listing) => (listing.price ? listing.price >= min && listing.price <= max : !priceLimited))
       .filter(withinCommute);
   };
@@ -330,7 +328,6 @@ export default function MapView() {
     if (!mapReady || !map.current) return undefined;
     const instance = map.current;
     const update = () => {
-      setCanvasWidth(instance.getContainer().clientWidth);
       setViewportRevision((revision) => revision + 1);
     };
     instance.on('moveend', update);
@@ -354,6 +351,19 @@ export default function MapView() {
   };
 
   const locateListing = (id) => listingPins.current.get(id)?.open();
+
+  /** Reframe the current filtered pins without clearing any search filters. */
+  const showAllListings = () => {
+    if (!map.current || !filteredListings.length) return;
+    map.current.fitBounds(
+      getBoundsFromCoords(filteredListings.map((listing) => [listing.longitude, listing.latitude])),
+      {
+        padding: 50,
+        maxZoom: 15,
+        duration: 0,
+      },
+    );
+  };
 
   // Whether any pin stands for more than one listing, which is the only thing the "stack" entry in
   // the legend explains. Computed from the same grouping the markers are built from, so the legend
@@ -468,9 +478,7 @@ export default function MapView() {
       }
     } else {
       const filtered = filterListings();
-      const coords = filtered
-        .filter((l) => l.latitude != null && l.longitude != null && l.latitude !== -1 && l.longitude !== -1)
-        .map((l) => [l.longitude, l.latitude]);
+      const coords = filtered.map((l) => [l.longitude, l.latitude]);
 
       if (coords.length > 0) {
         const bounds = getBoundsFromCoords(coords);
@@ -781,6 +789,8 @@ export default function MapView() {
             sidebar={
               <MapResults
                 listings={visibleListings}
+                totalCount={filteredListings.length}
+                onShowAll={showAllListings}
                 selectedId={openListingId}
                 onLocate={locateListing}
                 onHighlight={highlightListing}
@@ -819,24 +829,21 @@ export default function MapView() {
             onMapReady={handleMapReady}
             controlsInPanels
             panels={(controls, expandButton) => (
-              /* One box, two named groups. The map's own rows and this view's filters all answer
-                 what the map is showing, so they read as one panel with a line between them rather
-                 than as two identical boxes four pixels apart, neither of them with a heading.
-
-                 The fullscreen toggle rides on the first heading rather than floating above the
-                 panel: it is a control over the map as a whole, and that is the line that names the
-                 map. On a phone the same heading folds the panel away, see MapFilterPanel. */
+              /* Listing filters lead; layer settings have their own disclosure. Fullscreen and
+                 the legend remain accessible with the filters folded at every viewport width. */
               <MapFilterPanel
-                foldable={canvasWidth < 1000}
-                title={t('map.groupMap')}
+                foldable
+                title={t('map.filtersTitle')}
                 activeCount={activeFilterCount}
                 activeCountLabel={t('map.activeFilterCount', { count: activeFilterCount })}
                 headerExtra={expandButton}
+                footer={
+                  <details className="map-panel__legendDisclosure">
+                    <summary>{t('map.legendTitle')}</summary>
+                    <MapLegend hasStacks={hasStacks} hasRing={distanceFilter > 0 && hasHome} hasHome={hasHome} />
+                  </details>
+                }
               >
-                {controls}
-
-                <div className="map-panel__divider" />
-
                 <div className="map-panel__groupTitle">{t('map.groupListings')}</div>
 
                 <div className="map-panel__row">
@@ -970,8 +977,10 @@ export default function MapView() {
                   </div>
                 )}
 
-                <div className="map-panel__divider" />
-                <MapLegend hasStacks={hasStacks} hasRing={distanceFilter > 0 && hasHome} hasHome={hasHome} />
+                <details className="map-panel__disclosure">
+                  <summary>{t('map.layersTitle')}</summary>
+                  {controls}
+                </details>
               </MapFilterPanel>
             )}
           />

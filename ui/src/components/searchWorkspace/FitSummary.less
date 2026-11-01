@@ -54,3 +54,37 @@
     background: rgb(@color-warning-rgb / 10%);
   }
 }
+
+.fitSummary--compact {
+  display: block;
+  .fitSummary__toggle {
+    display: flex;
+    align-items: center;
+    gap: @space-1;
+    width: fit-content;
+    min-height: 30px;
+    cursor: pointer;
+    list-style: none;
+    &::-webkit-details-marker { display: none; }
+    &:focus-visible { outline: 2px solid @color-info; outline-offset: 2px; border-radius: @radius-chip; }
+  }
+  .fitSummary__details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: @space-1 @space-3;
+    padding: @space-1 0;
+    color: @color-muted;
+  }
+  .fitSummary__signal {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 16px;
+    height: 16px;
+    border: 1px solid currentColor;
+    border-radius: @radius-pill;
+    font-weight: @weight-strong;
+    &--low { color: @color-error; }
+    &--medium { color: @color-warning; }
+  }
+}

@@ -98,6 +98,20 @@ describe('Jev result display', () => {
     }
     expect(render(FitSummary, { summary: null })).toContain('class="fitSummary__chip fitSummary__chip--neutral"');
   });
+  it('collapses repeated status prose into an accessible score disclosure without losing warnings', () => {
+    const html = render(FitSummary, { summary, compact: true });
+    const toggle = html.match(/<summary[^>]*>(.*?)<\/summary>/)[1];
+    expect(toggle).toContain('JEV');
+    expect(toggle).toContain('>9</strong>');
+    expect(toggle).toContain('fitSummary__signal--low');
+    expect(toggle).not.toContain('Must-have unmet');
+    expect(html).toContain(
+      'aria-label="Jev fit assessment: 9; 40% assessed; Out of date; Must-have unmet; Must-haves unverified"',
+    );
+    expect(html).toContain('<details class="fitSummary fitSummary--compact">');
+    expect(html).not.toContain('<details open');
+    expect(html).toContain('<span>Must-have unmet</span>');
+  });
   it('formats the decimal for the active locale and keeps stored scores untouched', () => {
     const value = { score: 71, coverage: 40 };
     state.locale = 'de-DE';
@@ -147,7 +161,7 @@ describe('Jev result display', () => {
     ])
       expect(html).toContain(value);
   });
-  it('renders pros, cons and unverified chips without the evidence report', () => {
+  it('renders keyword chips with topic icons and closed disclosures for the full requirements', () => {
     state.result = {
       stale: true,
       result: {
@@ -155,11 +169,12 @@ describe('Jev result display', () => {
         model: 'typesafe/jev-1.14-test',
         evaluatedAt: '2026-11-01T12:00:00Z',
         criteria: [
-          { id: 'rooms', text: 'At least 3 rooms', verdict: 'met', required: false },
-          { id: 'budget', text: 'Within budget', verdict: 'unmet', required: true },
+          { id: 'rooms', text: 'At least 3 rooms', label: '3+ rooms', verdict: 'met', required: false },
+          { id: 'budget', text: 'Within budget', label: 'Budget', verdict: 'unmet', required: true },
           {
             id: 'dogs',
             text: 'Dog must be permitted',
+            label: 'Pets',
             required: true,
             verdict: 'unknown',
             confidence: 0,
@@ -182,17 +197,24 @@ describe('Jev result display', () => {
       'Unverified',
     ])
       expect(html).toContain(value);
-    for (const [verdict, text] of [
-      ['met', 'At least 3 rooms'],
-      ['unmet', 'Within budget'],
-      ['unknown', 'Dog must be permitted'],
+    for (const [verdict, text, label, icon] of [
+      ['met', 'At least 3 rooms', '3+ rooms', 'rooms'],
+      ['unmet', 'Within budget', 'Budget', 'budget'],
+      ['unknown', 'Dog must be permitted', 'Pets', 'pets'],
     ]) {
-      expect(html).toContain(`<li class="fitCard__chip fitCard__chip--${verdict}" title="${text}">`);
+      const chip = html.match(
+        new RegExp(`<summary class="fitCard__chip fitCard__chip--${verdict}">(.*?)</summary>`),
+      )[1];
+      expect(chip).toContain(`class="fitCard__chipText">${label}</span>`);
+      expect(chip).toContain(`data-topic="${icon}"`);
+      expect(chip).not.toContain(text);
+      expect(html).toContain(`<p class="fitCard__requirement">${text}</p>`);
       expect(html).toContain(`aria-labelledby="fit-one-${verdict}"`);
     }
+    expect(html.match(/<details class="fitCard__criterion">/g)).toHaveLength(3);
+    expect(html).not.toMatch(/<details[^>]*\bopen\b/);
     expect(html.match(/aria-label="Must-have"/g)).toHaveLength(2);
     for (const reportText of [
-      '<details',
       'Ask the landlord about pets.',
       'listing.description:0',
       en['search.scoreHelp'],
@@ -206,7 +228,7 @@ describe('Jev result display', () => {
     expect(html).toContain('/settings/search-profile');
     state.result = null;
   });
-  it('hides empty groups and keeps long or HTML-like requirements as escaped chip text', () => {
+  it('hides empty groups and keeps long or HTML-like requirements escaped inside the disclosure', () => {
     const text = '<script>unsafe()</script> ' + 'A long apartment requirement '.repeat(40);
     state.result = {
       result: {
@@ -222,6 +244,10 @@ describe('Jev result display', () => {
     expect(html).not.toContain('<script>');
     expect(html).toContain('&lt;script&gt;unsafe()&lt;/script&gt;');
     expect(html).toContain('class="fitCard__chipText"');
+    const chip = html.match(/<summary[^>]*>(.*?)<\/summary>/)[1];
+    expect(chip).not.toContain('&lt;script&gt;');
+    expect(chip).not.toContain('A long apartment requirement');
+    expect(html).not.toMatch(/<details[^>]*\bopen\b/);
     state.result = null;
   });
 });

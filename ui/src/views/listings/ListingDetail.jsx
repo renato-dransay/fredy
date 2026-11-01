@@ -47,13 +47,8 @@ const { Text } = Typography;
 const RAIL_BREAKPOINT = 1180;
 
 /**
- * A card that folds itself shut on a phone and stays open everywhere else.
- *
- * One column of six open cards is a very long page, and the ones worth folding are the ones read
- * second: the ad's own prose, the workspace, and the two enrichment cards. The `<details>` element
- * does the whole job - it is keyboard operable and announced as a disclosure without a line of
- * JavaScript - and the card inside gives up its own heading to the summary, which is why the
- * stylesheet hides it.
+ * A secondary section that can start folded while retaining its editable contents.
+ * Native details supports pointer, keyboard and touch; the section's heading becomes its summary.
  *
  * @param {Object} props
  * @param {boolean} props.enabled - Whether to fold at all. False renders the children bare.
@@ -62,7 +57,7 @@ const RAIL_BREAKPOINT = 1180;
  * @param {React.ReactNode} props.children
  * @returns {React.ReactNode}
  */
-function PhoneCollapse({ enabled, title, hint, children }) {
+function SectionDisclosure({ enabled, title, hint, children }) {
   if (!enabled) return children;
 
   return (
@@ -543,12 +538,16 @@ export default function ListingDetail() {
 
       <div className="listing-detail__grid">
         <div className="listing-detail__main">
-          <FitCard listingId={listingId} listing={listing} />
           <ListingPictures listing={listing} />
-          <ApplicationTracker key={listingId} listingId={listingId} />
+          <FitCard listingId={listingId} listing={listing} />
+          <div className="listing-detail__sec--application">
+            <SectionDisclosure enabled title={t('search.applicationTitle')}>
+              <ApplicationTracker key={listingId} listingId={listingId} />
+            </SectionDisclosure>
+          </div>
 
           <div className="listing-detail__sec--description">
-            <PhoneCollapse
+            <SectionDisclosure
               enabled={phone}
               title={t('listing.detail.descriptionTitle')}
               hint={listing.description ? undefined : t('listing.detail.noDescription')}
@@ -559,7 +558,7 @@ export default function ListingDetail() {
                 refetching={detailsFetching}
                 outcome={detailsOutcome}
               />
-            </PhoneCollapse>
+            </SectionDisclosure>
           </div>
 
           <div className="listing-detail__sec--location">
@@ -590,8 +589,8 @@ export default function ListingDetail() {
           </div>
 
           <div className="listing-detail__sec--workspace">
-            <PhoneCollapse
-              enabled={phone}
+            <SectionDisclosure
+              enabled
               title={t('listing.detail.workspaceTitle')}
               hint={notesDraft ? t('listing.detail.notesTitle') : undefined}
             >
@@ -603,7 +602,7 @@ export default function ListingDetail() {
                 notesSaving={notesSaving}
                 notesDirty={(notesDraft ?? '') !== (listing.notes ?? '')}
               />
-            </PhoneCollapse>
+            </SectionDisclosure>
           </div>
         </div>
 
@@ -648,12 +647,12 @@ export default function ListingDetail() {
               it: given the main column's width it would squeeze the map into half of it. */}
           {hasGeo && (
             <div className="listing-detail__sec--transit">
-              <PhoneCollapse enabled={phone} title={t('transit.nearbyTitle')}>
+              <SectionDisclosure enabled title={t('transit.nearbyTitle')}>
                 <section className="listing-card">
                   <h2 className="listing-card__label">{t('transit.nearbyTitle')}</h2>
                   <NearbyStops lat={listing.latitude} lng={listing.longitude} limit={3} expandFirst />
                 </section>
-              </PhoneCollapse>
+              </SectionDisclosure>
             </div>
           )}
 
@@ -661,12 +660,12 @@ export default function ListingDetail() {
               stored, and an empty card would read as a fault rather than a setting. */}
           {hasGeo && connectivityEnabled && (
             <div className="listing-detail__sec--connectivity">
-              <PhoneCollapse enabled={phone} title={t('connectivity.title')}>
+              <SectionDisclosure enabled title={t('connectivity.title')}>
                 <section className="listing-card">
                   <h2 className="listing-card__label">{t('connectivity.title')}</h2>
                   <ConnectivityCard connectivity={listing.connectivity} />
                 </section>
-              </PhoneCollapse>
+              </SectionDisclosure>
             </div>
           )}
         </aside>

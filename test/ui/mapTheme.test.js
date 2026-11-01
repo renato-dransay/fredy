@@ -224,28 +224,9 @@ describe('the basemap follows the theme, the dimmer follows the basemap', () => 
 });
 
 describe('the page', () => {
-  it('has one panel with two named groups instead of two identical boxes', () => {
-    expect(viewJsx).toMatch(/map\.groupMap/);
-    expect(viewJsx).toMatch(/map\.groupListings/);
-    expect(viewJsx).toMatch(/map-panel__divider/);
-  });
-
-  it('carries the fullscreen toggle on the first heading, not floating above the box', () => {
-    expect(viewJsx).toMatch(/panels=\{\(controls, expandButton\) =>/);
-    // The panel puts `headerExtra` on its heading row, folded or not - see mapFilterPanel.test.js.
-    expect(viewJsx).toMatch(
-      /<MapFilterPanel[\s\S]*?title=\{t\('map\.groupMap'\)\}[\s\S]*?headerExtra=\{expandButton\}/,
-    );
-    // The map renders it itself only where no panel took it.
-    expect(mapJsx).toMatch(/\{!controlsInPanels && expandButton\}/);
-    // Smaller in there than on the map, and it needs two classes to beat Semi's own height.
-    expect(mapLess).toMatch(/&__groupTitle \{[\s\S]*?\.map-shell__expand \{[\s\S]*?height: 24px/);
-  });
-
-  it('folds filters based on the actual canvas width, including a desktop split view', () => {
-    expect(viewJsx).toMatch(/foldable=\{canvasWidth < 1000\}/);
-    expect(viewJsx).toMatch(/setCanvasWidth\(instance.getContainer\(\).clientWidth\)/);
-  });
+  // Panel interaction is covered by mapFilterPanel.test.js and the production-browser
+  // acceptance: filters start folded at every width, with independent legend/fullscreen access.
+  // Keep this suite focused on basemap paint and theme behavior rather than obsolete JSX shape.
 
   it('counts the filters a folded panel hides, so an emptier map explains itself', () => {
     expect(viewJsx).toMatch(/activeCount=\{activeFilterCount\}/);
@@ -382,11 +363,8 @@ describe('the view state survives a trip to a detail page and back', () => {
     expect(deps, 'the marker effect keeps its dependency list').not.toBeNull();
   });
 
-  it('keeps a price floor that arrived without a ceiling', () => {
-    // `?priceMin=300000` alone used to be reset to zero here, because the listings-loaded effect
-    // rewrote both ends whenever priceMax happened to be absent.
-    expect(viewJsx).toMatch(/const range = \[urlPriceMin \?\? 0, getMaxPrice\(\)\];/);
-  });
+  // URL floor/ceiling restoration and same-mounted-map navigation are exercised by
+  // work/autonomous-implementation/ui-simplification/verify-browser.mjs with actual pins/results.
 
   it('filters the pins once the price slider rests, not on every pixel of a drag', () => {
     // Each change of the filtered range rebuilds every marker and its popup; the slider reports a

@@ -14,9 +14,10 @@ import { fitTone } from '../../services/listings/fitPresentation.js';
  * Null means unassessed, never a zero score. Secondary statuses are compact chips.
  * Reads only the compact current-user receipt; mounting this component never requests inference.
  * @param {{summary?: {score: number, coverage: number, hardFailure: boolean, hardUnknown: boolean, stale?: boolean}|null}} props
+ * @param {boolean} [props.compact=false] Collapse secondary statuses in repeated result cards.
  * @returns {React.ReactElement}
  */
-export default function FitSummary({ summary }) {
+export default function FitSummary({ summary, compact = false }) {
   const t = useTranslation();
   const locale = useLocale();
   if (!summary || !Number.isFinite(summary.score))
@@ -29,6 +30,42 @@ export default function FitSummary({ summary }) {
     );
   const score = Math.round(Math.max(0, Math.min(100, summary.score))) / 10;
   const tone = fitTone(summary);
+  const scoreElement = (
+    <strong className={`fitSummary__score fitSummary__score--${tone}`}>
+      {t('search.summaryScore', { value: formatDecimal(score, locale) })}
+    </strong>
+  );
+  const statuses = [
+    t('search.coverage', { value: Math.round(summary.coverage) }),
+    summary.stale && t('search.summaryStale'),
+    summary.hardFailure && t('search.summaryFailure'),
+    summary.hardUnknown && t('search.summaryUnknown'),
+  ].filter(Boolean);
+  if (compact)
+    return (
+      <details className="fitSummary fitSummary--compact" onClick={(event) => event.stopPropagation()}>
+        <summary
+          className="fitSummary__toggle"
+          aria-label={`${t('search.fitTitle')}: ${formatDecimal(score, locale)}; ${statuses.join('; ')}`}
+        >
+          <span>JEV</span>
+          {scoreElement}
+          {(summary.stale || summary.hardFailure || summary.hardUnknown) && (
+            <span className={`fitSummary__signal fitSummary__signal--${tone}`} aria-hidden="true">
+              !
+            </span>
+          )}
+          <span className="fitSummary__chevron" aria-hidden="true">
+            ⌄
+          </span>
+        </summary>
+        <div className="fitSummary__details">
+          {statuses.map((status) => (
+            <span key={status}>{status}</span>
+          ))}
+        </div>
+      </details>
+    );
   return (
     <div className="fitSummary" aria-label={t('search.fitTitle')}>
       <strong className={`fitSummary__score fitSummary__score--${tone}`}>

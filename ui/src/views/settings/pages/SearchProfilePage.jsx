@@ -10,6 +10,7 @@ import { errorMessage } from '../../../services/xhr.js';
 import { loadSearchProfile, saveSearchProfile } from '../../../services/searchWorkspaceClient.js';
 import { CRITERION_KINDS, criteriaFromDocument } from '../../../services/searchWorkspace.js';
 import '../../../components/searchWorkspace/SearchWorkspace.less';
+import { CRITERION_ICONS } from '../../../services/listings/criterionPresentation.js';
 import FitAutomationSettings from '../../../components/searchWorkspace/FitAutomationSettings.jsx';
 
 /** A document and explicit editable criteria, owned by the signed-in user. */
@@ -55,7 +56,11 @@ export default function SearchProfilePage() {
     setMessage('');
     setFailed(false);
     try {
-      const result = await saveSearchProfile({ document: profile.document, criteria: profile.criteria });
+      const result = await saveSearchProfile({
+        document: profile.document,
+        criteria: profile.criteria,
+        instructions: profile.instructions,
+      });
       setProfile(result.profile);
       setProvider(result.provider ?? provider);
       setMessage(t('search.saved'));
@@ -121,6 +126,31 @@ export default function SearchProfilePage() {
         <p className="searchWorkspace__muted">{t('search.documentHelp')}</p>
       </section>
       <section className="searchWorkspace__card">
+        <h2>{t('search.instructionsTitle')}</h2>
+        <p>{t('search.instructionsHelp')}</p>
+        <label className="searchWorkspace__field">
+          <span>{t('search.instructionsTitle')}</span>
+          <textarea
+            rows={6}
+            maxLength={4000}
+            value={profile.instructions ?? ''}
+            onChange={(event) => setProfile({ ...profile, instructions: event.target.value })}
+          />
+        </label>
+        <p className="searchWorkspace__muted">{t('search.instructionsGuard')}</p>
+        <div className="searchWorkspace__actions">
+          <Button
+            theme="solid"
+            onClick={save}
+            loading={saving}
+            disabled={saving || profile.criteria.some((criterion) => !criterion.text.trim())}
+          >
+            {t('search.saveProfile')}
+          </Button>
+        </div>
+        {message && <p role={failed ? 'alert' : 'status'}>{message}</p>}
+      </section>
+      <section className="searchWorkspace__card">
         <h2>{t('search.criteria')}</h2>
         <p>{t('search.criteriaHelp')}</p>
         {profile.criteria.map((criterion, index) => (
@@ -136,6 +166,26 @@ export default function SearchProfilePage() {
               />
             </label>
             <div className="searchWorkspace__fields">
+              <label className="searchWorkspace__field">
+                <span>{t('search.chipLabel')}</span>
+                <input
+                  maxLength={32}
+                  placeholder={t('search.chipAutomatic')}
+                  value={criterion.label ?? ''}
+                  onChange={(event) => update(index, { label: event.target.value })}
+                />
+              </label>
+              <label className="searchWorkspace__field">
+                <span>{t('search.chipIcon')}</span>
+                <select value={criterion.icon ?? ''} onChange={(event) => update(index, { icon: event.target.value })}>
+                  <option value="">{t('search.chipAutomatic')}</option>
+                  {CRITERION_ICONS.map((icon) => (
+                    <option key={icon} value={icon}>
+                      {t(`search.icon.${icon}`)}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <label className="searchWorkspace__field">
                 <span>{t('search.kind')}</span>
                 <select
