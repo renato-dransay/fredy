@@ -26,7 +26,7 @@ export default function MapLegend({ hasStacks, hasRing, hasHome }) {
   const t = useTranslation();
 
   const entries = [
-    ...Object.entries(FIT_PIN_SYMBOLS).map(([key, symbol]) => ({ key, symbol, show: true })),
+    ...Object.entries(FIT_PIN_SYMBOLS).map(([key, symbol]) => ({ key, symbol: symbol || '●', show: true })),
     // No colour of its own: the dot takes the badge's text-colour token from the stylesheet, so it
     // is the same as the badge it explains in both themes.
     { key: 'stack', color: null, show: hasStacks },

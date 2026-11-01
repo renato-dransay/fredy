@@ -4,4 +4,4 @@
  */
 
 /** Symbols supplement color on pins and in their legend; mixed means different fit levels at one address. */
-export const FIT_PIN_SYMBOLS = Object.freeze({ high: '★', medium: '!', low: '×', unassessed: '?', mixed: '◐' });
+export const FIT_PIN_SYMBOLS = Object.freeze({ high: '★', medium: '!', low: '', unassessed: '?', mixed: '◐' });

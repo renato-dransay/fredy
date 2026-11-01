@@ -675,7 +675,7 @@ export default function MapView() {
         grouped.length === 1 && Number.isFinite(grouped[0].fitSummary?.score)
           ? formatDecimal(Math.round(Math.max(0, Math.min(100, grouped[0].fitSummary.score))) / 10, locale)
           : null;
-      pin.textContent = `${FIT_PIN_SYMBOLS[tone]}${score == null ? '' : ` ${score}`}`;
+      pin.textContent = `${FIT_PIN_SYMBOLS[tone]}${score == null ? '' : ` ${score}`}`.trim();
       const label = [
         t(`map.fit.${tone}`),
         score == null ? null : t('search.summaryScore', { value: score }),
