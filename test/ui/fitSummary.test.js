@@ -8,7 +8,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import en from '../../ui/src/locales/en.json';
 
-const state = vi.hoisted(() => ({ result: null }));
+const state = vi.hoisted(() => ({ result: null, locale: 'en-US' }));
 vi.mock('react', async (original) => {
   const react = await original();
   return {
@@ -27,7 +27,7 @@ vi.mock('../../ui/src/services/i18n/i18n.jsx', () => ({
         (text, [name, value]) => text.replaceAll(`{{${name}}}`, String(value)),
         en[key] ?? key,
       ),
-  useLocale: () => 'en-US',
+  useLocale: () => state.locale,
 }));
 vi.mock('../../ui/src/services/state/store.js', () => ({ useSelector: (selector) => selector({ provider: [] }) }));
 vi.mock('react-router', () => ({
@@ -62,6 +62,53 @@ const summary = { score: 90, coverage: 40, hardFailure: true, hardUnknown: true,
 
 // Render the actual components, rather than testing strings in their source files.
 describe('Jev result display', () => {
+  it.each([
+    [0, 'low', '0'],
+    [49, 'low', '4.9'],
+    [50, 'medium', '5'],
+    [79, 'medium', '7.9'],
+    [80, 'high', '8'],
+    [100, 'high', '10'],
+  ])('shows stored score %s on a colored ten-point scale', (score, tone, value) => {
+    const html = render(FitSummary, {
+      summary: { score, coverage: 100, hardFailure: false, hardUnknown: false, stale: false },
+    });
+    expect(html).toContain(`Jev ${value} / 10`);
+    expect(html).toContain(`fitSummary__score--${tone}`);
+    expect(html).not.toContain('/ 100');
+  });
+  it.each([
+    [{ hardFailure: true }, 'low'],
+    [{ hardUnknown: true }, 'medium'],
+    [{ stale: true }, 'medium'],
+  ])('never gives an unresolved or failed must-have a green score: %j', (flags, tone) => {
+    const html = render(FitSummary, { summary: { score: 95, coverage: 70, ...flags } });
+    expect(html).toContain(`fitSummary__score--${tone}`);
+    expect(html).not.toContain('fitSummary__score--high');
+  });
+  it('renders every secondary status as a small chip, including unassessed', () => {
+    const html = render(FitSummary, { summary });
+    for (const [tone, text] of [
+      ['neutral', '40% assessed'],
+      ['warning', 'Out of date'],
+      ['failure', 'Must-have unmet'],
+      ['warning', 'Must-haves unverified'],
+    ]) {
+      expect(html).toContain(`<span class="fitSummary__chip fitSummary__chip--${tone}" title="${text}">${text}</span>`);
+    }
+    expect(render(FitSummary, { summary: null })).toContain('class="fitSummary__chip fitSummary__chip--neutral"');
+  });
+  it('formats the decimal for the active locale and keeps stored scores untouched', () => {
+    const value = { score: 71, coverage: 40 };
+    state.locale = 'de-DE';
+    try {
+      expect(render(FitSummary, { summary: value })).toContain('Jev 7,1 / 10');
+      expect(value.score).toBe(71);
+    } finally {
+      state.locale = 'en-US';
+    }
+  });
+
   it('does not claim a listing is unassessed before its saved receipt has loaded', () => {
     state.result = null;
     const html = render(FitCard, { listingId: 'one', listing: { id: 'one' } });
@@ -70,14 +117,14 @@ describe('Jev result display', () => {
   });
   it('distinguishes a missing assessment from a genuine zero score', () => {
     expect(render(FitSummary, { summary: null })).toContain('Not assessed');
-    expect(render(FitSummary, { summary: null })).not.toContain('/ 100');
+    expect(render(FitSummary, { summary: null })).not.toContain('/ 10');
     const html = render(FitSummary, { summary: { ...summary, score: 0 } });
-    expect(html).toContain('Jev 0 / 100');
+    expect(html).toContain('Jev 0 / 10');
     expect(html).not.toContain('Not assessed');
   });
   it('keeps stale, failed and unknown must-have warnings visible next to even a high score', () => {
     const html = render(FitSummary, { summary });
-    for (const value of ['Jev 90 / 100', '40%', 'Out of date', 'Must-have unmet', 'Must-haves unverified'])
+    for (const value of ['Jev 9 / 10', '40%', 'Out of date', 'Must-have unmet', 'Must-haves unverified'])
       expect(html).toContain(value);
   });
   it.each([
@@ -93,7 +140,7 @@ describe('Jev result display', () => {
     for (const value of [
       'Assessed flat',
       'New flat',
-      'Jev 90 / 100',
+      'Jev 9 / 10',
       'Must-have unmet',
       'Must-haves unverified',
       'Not assessed',
@@ -124,7 +171,7 @@ describe('Jev result display', () => {
     const html = render(FitCard, { listingId: 'one', listing: { id: 'one' } });
     for (const value of [
       'Jev fit assessment',
-      'Jev 90 / 100',
+      'Jev 9 / 10',
       'Must-have unmet',
       'Must-haves unverified',
       'Dog must be permitted',

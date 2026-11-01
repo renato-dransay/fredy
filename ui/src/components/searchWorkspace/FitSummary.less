@@ -3,20 +3,54 @@
 .fitSummary {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   gap: @space-1 @space-2;
   font-size: @text-xs;
   line-height: 1.5;
   color: @color-muted;
 
-  strong {
-    color: @color-text;
+  &__score {
+    display: inline-flex;
+    align-items: center;
+    padding: @space-1 @space-2;
+    border-radius: @radius-pill;
     font-weight: @weight-medium;
+    white-space: nowrap;
   }
-  &__failure {
+  &__score--low {
     color: @color-error;
+    background: @color-error-dim;
   }
-  &__warning {
+  &__score--medium {
     color: @color-warning;
+    background: rgb(@color-warning-rgb / 10%);
+  }
+  &__score--high {
+    color: @color-success;
+    background: @color-success-dim;
+  }
+  &__chip {
+    display: inline-block;
+    box-sizing: border-box;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0 @space-2;
+    border: 1px solid @color-border;
+    border-radius: @radius-pill;
+    font-size: @text-xs;
+    line-height: 1.6;
+    white-space: nowrap;
+    background: @color-fill-subtle;
+  }
+  &__chip--failure {
+    color: @color-error;
+    border-color: rgb(@color-error-rgb / 30%);
+    background: @color-error-dim;
+  }
+  &__chip--warning {
+    color: @color-warning;
+    border-color: rgb(@color-warning-rgb / 30%);
+    background: rgb(@color-warning-rgb / 10%);
   }
 }

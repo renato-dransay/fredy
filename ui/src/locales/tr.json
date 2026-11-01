@@ -1593,7 +1593,7 @@
   "search.saveProfile": "Gereksinimleri kaydet",
   "search.fitTitle": "Jev değerlendirmesi",
   "search.summaryNotAssessed": "Jev · Değerlendirilmedi",
-  "search.summaryScore": "Jev {{value}} / 100",
+  "search.summaryScore": "Jev {{value}} / 10",
   "search.summaryStale": "Güncel değil",
   "search.summaryFailure": "Zorunlu koşul karşılanmadı",
   "search.summaryUnknown": "Zorunlu koşullar doğrulanmadı",

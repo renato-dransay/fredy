@@ -1632,7 +1632,7 @@
   "search.saveProfile": "Salva requisiti",
   "search.fitTitle": "Valutazione Jev",
   "search.summaryNotAssessed": "Jev · Non valutato",
-  "search.summaryScore": "Jev {{value}} / 100",
+  "search.summaryScore": "Jev {{value}} / 10",
   "search.summaryStale": "Non aggiornato",
   "search.summaryFailure": "Requisito obbligatorio non soddisfatto",
   "search.summaryUnknown": "Requisiti obbligatori non verificati",
