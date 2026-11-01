@@ -104,7 +104,7 @@ describe('help that is read once stops being read every time', () => {
 describe('the pages say what they are', () => {
   it('groups the system page instead of stacking ten cards', () => {
     expect([...PAGES.system.matchAll(/settingsShell__groupTitle/g)].length).toBeGreaterThanOrEqual(4);
-    expect([...PAGES.system.matchAll(/<SegmentPart/g)].length).toBeLessThanOrEqual(6);
+    expect([...PAGES.system.matchAll(/<SegmentPart/g)].length).toBeLessThanOrEqual(7);
   });
 
   it('says in one sentence what the four execution dials mean together', () => {

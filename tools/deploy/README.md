@@ -20,7 +20,9 @@ The worker serializes all commands with a lock. Deployment logs and verified sna
 
 ## Personal Jev key
 
-Apartment fit uses only `OPENROUTER_API_KEY_PERSONAL`, never a shared/company key. Add it to the current Mac user's Keychain, entering it at the password prompt:
+An administrator can save a personal OpenRouter key in **Administration → System → OpenRouter (Jev)** without redeploying. It is write-only and stored unencrypted in SQLite, so keep the database and backups private. A saved key overrides the environment fallback. Removing the saved key restores that fallback if present.
+
+Alternatively, supply `OPENROUTER_API_KEY_PERSONAL` through the deployment environment, never a shared/company key. Add it to the current Mac user's Keychain, entering it at the password prompt:
 
 ```sh
 security add-generic-password -U -a "$(id -un)" -s OPENROUTER_API_KEY_PERSONAL -w
@@ -32,7 +34,7 @@ Then run `refresh` to recreate the current revision with the key injected from K
 python3 /Users/renas/.config/fredy-live/mac_mini.py --config /Users/renas/.config/fredy-live/deploy.json refresh
 ```
 
-The key is not written into the repository, generated Compose file, logs, or database. Docker receives it in the container environment; administrators of the host/Docker daemon can inspect container credentials. The application reports only whether the provider is configured. SMTP/IMAP credentials are entered separately in the Applications page and encrypted in SQLite with the private key in `/conf`.
+With the Keychain/environment method, the key is not written into the repository, generated Compose file, logs, or database. Docker receives it in the container environment; administrators of the host/Docker daemon can inspect container credentials. The application reports configuration status without returning either key. SMTP/IMAP credentials are entered separately in the Applications page and encrypted in SQLite with the private key in `/conf`.
 
 ## Local verification
 

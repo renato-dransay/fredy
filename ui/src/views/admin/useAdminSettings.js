@@ -33,6 +33,8 @@ export const SYSTEM_FIELDS = [
   'proxyAuthUserHeader',
   'proxyAuthSecretHeader',
   'proxyAuthSecret',
+  'openrouterApiKey',
+  'removeOpenrouterApiKey',
 ];
 
 /** The fields the Connectivity page owns. @type {string[]} */
@@ -103,6 +105,8 @@ function toForm(settings) {
     // Write-only: the backend never sends it back, so the form always starts empty and an empty
     // value on save means "keep the current secret".
     proxyAuthSecret: '',
+    openrouterApiKey: '',
+    removeOpenrouterApiKey: false,
     interval: settings?.interval ?? '',
     workingHours: {
       from: settings?.workingHours?.from ?? null,
@@ -232,6 +236,10 @@ export function useAdminSettings(settings) {
       const payload = {};
       for (const name of fields) {
         payload[name] = form[name];
+      }
+      if (fields.includes('openrouterApiKey')) {
+        if (form.removeOpenrouterApiKey) payload.openrouterApiKey = null;
+        delete payload.removeOpenrouterApiKey;
       }
       // Numbers arrive from InputNumber as numbers already, but a hand-edited field can leave a
       // string behind, and the backend's bounds checks are stricter than its coercion.
@@ -458,6 +466,7 @@ export function useAdminSettings(settings) {
 
   return {
     t,
+    openrouterKeySource: settings?.openrouterKeySource ?? null,
     form,
     setField,
     setWorkingHour,

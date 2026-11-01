@@ -27,7 +27,7 @@ const PROXY_AUTH_FIELDS = [
  * How the instance runs: the port it listens on, where it thinks it lives, how long a session
  * lasts, how long listings are kept, where the database file is.
  *
- * Five groups and six cards, where this was ten cards in a row. Seven of those ten held a single
+ * Related settings are grouped into cards. Previously ten cards held a single
  * input, and their help text alone came to some 450 words of permanently visible prose - read once
  * by whoever set the instance up, and in the way on every visit afterwards.
  *
@@ -45,7 +45,8 @@ const PROXY_AUTH_FIELDS = [
  * @returns {React.ReactElement}
  */
 export default function SystemPage() {
-  const { t, form, setField, systemDirty, savingSystem, saveSystem, discardSystem } = useOutletContext();
+  const { t, form, setField, openrouterKeySource, systemDirty, savingSystem, saveSystem, discardSystem } =
+    useOutletContext();
 
   // Port und Datenbankpfad werden beim Start gelesen, deshalb laedt saveSystem den Browser drei
   // Sekunden nach dem Speichern neu. Bisher stand das nur in den Hilfetexten der beiden Felder und
@@ -217,7 +218,30 @@ export default function SystemPage() {
         </div>
       </SegmentPart>
 
-      {/* Die einzige Karte der Seite, deren Hilfe stehen bleibt: sie traegt die Entscheidung, ob
+      <SegmentPart name={t('settings.openrouter')} helpText={t('settings.openrouterHelp')}>
+        <div className="adminRow adminRow--stack">
+          <p role="status">{t(`settings.openrouterStatus.${openrouterKeySource || 'missing'}`)}</p>
+          <Input
+            type="password"
+            mode="password"
+            autoComplete="new-password"
+            aria-label={t('settings.openrouterApiKey')}
+            placeholder={t('settings.openrouterPlaceholder')}
+            value={form.openrouterApiKey}
+            disabled={form.removeOpenrouterApiKey}
+            onChange={(value) => setField('openrouterApiKey', value)}
+          />
+          <Checkbox
+            checked={form.removeOpenrouterApiKey}
+            disabled={openrouterKeySource !== 'settings'}
+            onChange={(event) => setField('removeOpenrouterApiKey', event.target.checked)}
+          >
+            {t('settings.openrouterRemove')}
+          </Checkbox>
+        </div>
+      </SegmentPart>
+
+      {/* Die Proxy-Karte traegt die Entscheidung, ob
           diese Instanz ihre Anmeldung aus der Hand gibt, und dazu eine Warnung. Eine Warnung, die
           man erst aufklappen muss, ist keine. */}
       <SegmentPart

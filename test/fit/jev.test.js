@@ -2,8 +2,10 @@
  * Copyright (c) 2026 by Christian Kellner.
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
+
 import { describe, it, expect, vi } from 'vitest';
 import { evaluateSemantic, FitProviderError, fitProviderStatus } from '../../lib/services/fit/jev.js';
+vi.mock('../../lib/services/storage/settingsStorage.js', () => ({ getSettings: async () => ({}) }));
 const criteria = [{ id: 'c', text: 'Two bedrooms', weight: 1, required: true, kind: 'semantic' }];
 const sources = [{ source: 'listing.description:0', text: 'Two bedrooms, unfurnished, indefinite lease' }];
 const choose = (selected, options) => ({
@@ -29,7 +31,7 @@ describe('Jev typed fit integration', () => {
     });
     expect(request).not.toHaveBeenCalled();
     delete process.env.OPENROUTER_API_KEY;
-    expect(JSON.stringify(fitProviderStatus())).not.toContain('credential');
+    expect(JSON.stringify(await fitProviderStatus())).not.toContain('credential');
   });
   it('uses the fixed decisions endpoint, personal key and finite source choices', async () => {
     const request = vi.fn(async () => new Response(JSON.stringify(valid())));

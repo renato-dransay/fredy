@@ -22,6 +22,7 @@ const STORED_SETTINGS = {
   workingHours: { from: '08:00', to: '20:00' },
   session_secret: 'super-secret-signing-key',
   proxyAuthSecret: 'shared-with-the-proxy',
+  openrouterApiKey: 'synthetic-private-openrouter-key',
 };
 
 const settingsRows = Object.entries(STORED_SETTINGS).map(([name, value]) => ({
@@ -45,12 +46,13 @@ describe('settings exposure', () => {
       const published = await getPublicSettings();
       expect(published).not.toHaveProperty('session_secret');
       expect(published).not.toHaveProperty('proxyAuthSecret');
+      expect(published).not.toHaveProperty('openrouterApiKey');
     });
 
     it('keeps every non-secret setting', async () => {
       const published = await getPublicSettings();
       for (const name of Object.keys(STORED_SETTINGS)) {
-        if (name === 'session_secret' || name === 'proxyAuthSecret') continue;
+        if (['session_secret', 'proxyAuthSecret', 'openrouterApiKey'].includes(name)) continue;
         expect(published[name]).toEqual(STORED_SETTINGS[name]);
       }
     });
@@ -96,6 +98,7 @@ describe('settings exposure', () => {
       const payload = await handler({});
       expect(payload).not.toHaveProperty('session_secret');
       expect(payload).not.toHaveProperty('proxyAuthSecret');
+      expect(payload).not.toHaveProperty('openrouterApiKey');
     });
 
     it('gives an admin the operator configuration', async () => {

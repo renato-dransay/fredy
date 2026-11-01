@@ -8,7 +8,9 @@ On a listing, **Evaluate fit** runs deterministic checks and, when configured, J
 
 Metro-line criteria look for actual matching route membership in OpenStreetMap and calculate walking routes to candidate stops. They do not mistake the nearest generic stop for a U2 stop. Missing coordinates, incomplete map data, or unavailable routing produce unknown. These are evidence checks rather than guarantees of physical accessibility. Only text/Markdown profiles are supported; uploaded listing PDFs/photos remain attachments and are not OCR inputs for fit.
 
-Semantic analysis requires the operator to configure the personal Jev key. Without it, the app explains the missing setup; numeric-only profiles remain usable. No claim of a live provider test is made by the installation tests.
+Semantic analysis requires a personal OpenRouter key. An administrator can set it in **Administration → System → OpenRouter (Jev)**. The password field is write-only: leave it blank to retain the saved key, enter a new value to replace it, or select **Remove saved key** and save to remove it. The saved key takes effect immediately and overrides `OPENROUTER_API_KEY_PERSONAL` from the deployment environment. Removing it restores that environment fallback, if present; the status indicates the active source. Fredy never uses the shared `OPENROUTER_API_KEY`.
+
+The UI-saved key lives in the global SQLite settings alongside other instance secrets. It is not encrypted at rest; restrict access to the database and backups. No API response returns it. Without a key, the app explains the missing setup; numeric-only profiles remain usable. No claim of a live provider test is made by the installation tests.
 
 ## Applications, replies, visits and follow-ups
 
