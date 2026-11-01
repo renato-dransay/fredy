@@ -2,6 +2,11 @@
  * Copyright (c) 2026 by Christian Kellner.
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
+
+/*
+ * Copyright (c) 2026 by Christian Kellner.
+ * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
+ */
 import { describe, it, expect } from 'vitest';
 import { normalizeProfile } from '../../lib/services/fit/profile.js';
 import {
@@ -10,6 +15,7 @@ import {
   fitEvidenceHash,
   isFitStale,
   summarizeFit,
+  sourcesForListing,
 } from '../../lib/services/fit/evaluate.js';
 
 const requirement = (extra = {}) => ({
@@ -51,9 +57,61 @@ describe('apartment requirements validation', () => {
     });
     expect(result.criteria[0].line).toBe('U2');
   });
+  it('supports an explicit any-subway rule without broadening other line names', () => {
+    const result = normalizeProfile({
+      criteria: [requirement({ kind: 'station_line', line: ' * ', maxWalkMinutes: 10, required: false })],
+    });
+    expect(result.criteria[0]).toMatchObject({ line: '*', required: false, maxWalkMinutes: 10 });
+    expect(() =>
+      normalizeProfile({
+        criteria: [requirement({ kind: 'station_line', line: 'U*', maxWalkMinutes: 10 })],
+      }),
+    ).toThrow();
+  });
 });
 
 describe('fit scoring and provenance', () => {
+  it('passes explicit rent-basis and energy evidence without asserting a heating-inclusive warm rent', () => {
+    const sources = sourcesForListing({ price: 1800, charges_included: 0, charges: 250, energy_class: 'B' });
+    expect(sources.find((s) => s.source === 'listing.charges_included').text).toContain('excludes');
+    expect(sources.find((s) => s.source === 'listing.charges').text).toContain('250');
+    expect(sources.find((s) => s.source === 'listing.energy_class').text).toContain('B');
+    expect(sources.find((s) => s.source === 'listing.charges').text).toContain('heating');
+    expect(sources.some((s) => s.text.includes('2050'))).toBe(false);
+    expect(sourcesForListing({ charges_included: null }).some((s) => s.source === 'listing.charges_included')).toBe(
+      false,
+    );
+  });
+  it('shares canonical evidence and invalidation between normalized provider rows and stored rows', () => {
+    const normalized = { price: 1800, chargesIncluded: true, charges: 200, energyClass: 'C' };
+    const stored = { price: 1800, charges_included: 1, charges: 200, energy_class: 'C' };
+    expect(sourcesForListing(normalized)).toEqual(sourcesForListing(stored));
+    expect(fitEvidenceHash({}, normalized)).toBe(fitEvidenceHash({}, stored));
+    expect(fitEvidenceHash({}, stored)).not.toBe(fitEvidenceHash({}, { ...stored, energy_class: 'D' }));
+    expect(fitEvidenceHash({}, stored)).not.toBe(fitEvidenceHash({}, { ...stored, charges_included: 0 }));
+    expect(fitEvidenceHash({}, stored)).not.toBe(fitEvidenceHash({}, { ...stored, charges: 300 }));
+  });
+  it('keeps the whole bounded description when structured evidence consumes source slots', () => {
+    const description = 'x'.repeat(19980) + 'Lease: permanent.';
+    const sources = sourcesForListing({
+      title: 'Flat',
+      address: 'Berlin',
+      price: 1800,
+      size: 90,
+      rooms: 3,
+      charges_included: true,
+      charges: 200,
+      energy_class: 'B',
+      description,
+    });
+    expect(sources.length).toBeLessThanOrEqual(30);
+    expect(
+      sources
+        .filter((s) => s.source.startsWith('listing.description:'))
+        .map((s) => s.text)
+        .join(''),
+    ).toBe(description);
+  });
   it('unknown hard requirements remain unknown and reduce conservative score', () => {
     expect(
       summarizeFit([requirement({ verdict: 'met' }), requirement({ id: 'b', verdict: 'unknown', weight: 3 })]),

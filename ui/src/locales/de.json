@@ -1753,5 +1753,10 @@
   "search.sendState.dispatching": "Wird versendet",
   "search.sendState.sent": "SMTP-Annahme",
   "search.sendState.uncertain": "Unklar — Postfach prüfen",
-  "search.sendState.cancelled": "Storniert"
+  "search.sendState.cancelled": "Storniert",
+  "search.automaticTitle": "Automatische Eignungsbewertungen",
+  "search.automaticHelp": "Neue Angebote in den ausgewählten Suchaufträgen werden anhand Ihres gespeicherten Profils bewertet. Dabei können Kosten beim persönlichen Anbieter entstehen. Pro Durchlauf werden bis zu 20 Kandidaten bewertet; ausstehende folgen bei späteren Suchen. Ältere Angebote werden nicht automatisch bewertet. Unklare Angebote bleiben erhalten. Private Statushinweise erscheinen nur in Ihren privaten Kanälen für nicht geteilte Suchaufträge.",
+  "search.automaticNoJobs": "Erstellen Sie zuerst einen Suchauftrag.",
+  "search.automaticSave": "Automatische Bewertungen speichern",
+  "search.anySubwayHelp": "Geben Sie * für eine beliebige U-Bahn-Linie oder eine bestimmte Linie wie U2 ein."
 }

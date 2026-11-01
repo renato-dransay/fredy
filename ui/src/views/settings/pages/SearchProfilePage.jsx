@@ -10,6 +10,7 @@ import { errorMessage } from '../../../services/xhr.js';
 import { loadSearchProfile, saveSearchProfile } from '../../../services/searchWorkspaceClient.js';
 import { CRITERION_KINDS, criteriaFromDocument } from '../../../services/searchWorkspace.js';
 import '../../../components/searchWorkspace/SearchWorkspace.less';
+import FitAutomationSettings from '../../../components/searchWorkspace/FitAutomationSettings.jsx';
 
 /** A document and explicit editable criteria, owned by the signed-in user. */
 export default function SearchProfilePage() {
@@ -188,6 +189,7 @@ export default function SearchProfilePage() {
                       value={criterion.line ?? 'U2'}
                       onChange={(event) => update(index, { line: event.target.value })}
                     />
+                    <span>{t('search.anySubwayHelp')}</span>
                   </label>
                   <label className="searchWorkspace__field">
                     <span>{t('search.walkMinutes')}</span>
@@ -249,6 +251,7 @@ export default function SearchProfilePage() {
           {message}
         </p>
       </section>
+      <FitAutomationSettings />
     </div>
   );
 }

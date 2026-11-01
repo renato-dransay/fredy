@@ -1753,5 +1753,10 @@
   "search.sendState.dispatching": "Sending",
   "search.sendState.sent": "SMTP accepted",
   "search.sendState.uncertain": "Uncertain — check mailbox",
-  "search.sendState.cancelled": "Cancelled"
+  "search.sendState.cancelled": "Cancelled",
+  "search.automaticTitle": "Automatic fit assessments",
+  "search.automaticHelp": "Assess new listings in the selected jobs using your saved profile and personal provider. Paid provider usage may apply. Each batch assesses up to 20 candidates; pending candidates continue on later searches. Earlier listings are not automatically assessed. Uncertain listings remain available. Private status labels appear only in your private channels for unshared jobs.",
+  "search.automaticNoJobs": "Create a search job first.",
+  "search.automaticSave": "Save automatic assessments",
+  "search.anySubwayHelp": "Enter * for any U-Bahn/subway line, or a specific line such as U2."
 }

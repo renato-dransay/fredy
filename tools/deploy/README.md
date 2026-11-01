@@ -48,3 +48,20 @@ yarn test:offline
 The deployment tests inject snapshot, startup, activation, and postrelease failures. The live private URL remains `https://olympus.ibex-cobia.ts.net:9998`.
 
 If recovery itself fails, the worker records `recovery_required` and stops all future deployments, including newer commits. Stop the LaunchAgent, preserve both volumes and snapshots, and inspect the failed deployment log before a deliberate recovery. This condition is different from an ordinary failed build/check, which leaves the current service running and permits a newer fix.
+
+## Automatic deployment recovery
+
+The installed `net.fredy.autodeploy` LaunchAgent must be loaded and enabled. `StartInterval=60` checks main once a minute, including after a failed poll; a slow build holds the deployment lock and later ticks leave it alone. A transient Git or test failure keeps the current service running. Inspect `autodeploy.log`, the revision's `deploy.log`, and `deployment-state.json` to distinguish an idle worker from a failed or disabled one.
+
+A manually deployed source overlay must be integrated into main before normal Git deployment resumes. When `worktree_source_digest`, its manifest, or `automatic_deployment_hold` is present, the worker verifies that the candidate includes every approved change. Exact file hashes pass directly; authenticated source contents also permit unrelated newer main edits when a three-way merge with the recorded baseline changes nothing in the candidate. A missing, unreadable, malformed, inconsistent, or mismatching manifest blocks the release before checks or service changes. A successfully activated matching Git revision clears this temporary metadata. Do not disable the agent indefinitely or remove the hold without integrating the approved source.
+
+The shared ARM64 check runner allows fixture setup hooks the same 60-second budget as individual tests. Assertions and all lint, formatting, offline, deployment, backup, authentication, and activation checks remain required.
+
+After repairing and checking a worker, install it atomically at the existing operational path before re-enabling a stopped agent. Re-enable the existing schedule with:
+
+```sh
+launchctl enable gui/$(id -u)/net.fredy.autodeploy
+launchctl bootstrap gui/$(id -u) /Users/renas/Library/LaunchAgents/net.fredy.autodeploy.plist
+```
+
+Use `bootstrap` only when the agent is not already loaded. Verify `launchctl print`, a successful scheduled deployment, the image's exact Git label and `/api/deployment` through the private HTTPS URL. Observe a subsequent scheduled poll to confirm it exits successfully without rebuilding an unchanged revision.

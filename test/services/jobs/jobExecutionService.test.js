@@ -55,6 +55,7 @@ describe('services/jobs/jobExecutionService', () => {
       return { default: m };
     });
     vi.doMock(notifyPath, () => ({ send: async () => [] }));
+    vi.doMock(root + '/lib/services/fit/automation.js', () => ({ drainAutomaticFit: vi.fn(async () => {}) }));
     vi.doMock(puppeteerPath, () => ({
       launchBrowser: async (...args) => {
         calls.launchBrowser.push(args);
@@ -238,6 +239,20 @@ describe('services/jobs/jobExecutionService', () => {
 
     expect(calls.launchBrowser).toEqual([['https://browser.example/', {}]]);
     expect(calls.pipeline.map(({ browser }) => browser)).toEqual([undefined, state.browser]);
+  });
+
+  it('does not configure, launch or execute a disabled source', async () => {
+    const createConfig = vi.fn(() => ({ url: 'https://disabled.example/' }));
+    state.providers = [{ metaInformation: { id: 'disabled' }, createConfig }];
+    state.jobsById.j1 = { id: 'j1', enabled: true, userId: 'u1', provider: [{ id: 'disabled', enabled: false }] };
+    await initService();
+    bus.emit('jobs:runOne', { jobId: 'j1' });
+    await vi.waitFor(() => expect(calls.markFinished).toEqual(['j1']));
+    expect(createConfig).not.toHaveBeenCalled();
+    expect(calls.launchBrowser).toEqual([]);
+    expect(calls.pipeline).toEqual([]);
+    const { drainAutomaticFit } = await import('../../../lib/services/fit/automation.js');
+    expect(drainAutomaticFit).not.toHaveBeenCalled();
   });
 
   it('starts no browser at all for a job of API-only providers', async () => {

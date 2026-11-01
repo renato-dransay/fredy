@@ -1753,5 +1753,10 @@
   "search.sendState.dispatching": "Enviando",
   "search.sendState.sent": "Aceptado por SMTP",
   "search.sendState.uncertain": "Incierto: comprueba el buzón",
-  "search.sendState.cancelled": "Cancelado"
+  "search.sendState.cancelled": "Cancelado",
+  "search.automaticTitle": "Evaluaciones automáticas de compatibilidad",
+  "search.automaticHelp": "Evalúa los nuevos anuncios de las búsquedas seleccionadas con tu perfil guardado y proveedor personal. El uso del proveedor puede tener coste. Cada lote evalúa hasta 20 candidatos; los pendientes continúan en búsquedas posteriores. Los anuncios anteriores no se evalúan automáticamente. Los anuncios con datos inciertos se conservan. Las etiquetas privadas solo aparecen en tus canales privados para búsquedas no compartidas.",
+  "search.automaticNoJobs": "Crea primero una búsqueda.",
+  "search.automaticSave": "Guardar evaluaciones automáticas",
+  "search.anySubwayHelp": "Introduce * para cualquier línea de metro o una línea concreta, como U2."
 }

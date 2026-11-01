@@ -111,6 +111,62 @@ class Deployer:
         # These are not needed in the Docker context or tests, and remove local path remotes.
         shutil.rmtree(target / '.git')
 
+    def validate_source(self, source):
+        """Require main to contain a protected live overlay before replacing its running image."""
+        protected = ['automatic_deployment_hold', 'worktree_source_digest', 'worktree_source_manifest']
+        if not any(key in self.state for key in protected):
+            return
+        try:
+            manifest = json.loads(Path(self.state['worktree_source_manifest']).read_text())
+            files = manifest['files']
+            digest = self.state['worktree_source_digest']
+            base = checked_revision(manifest['baseGitRevision'])
+            contents = manifest.get('contents')
+            if (not isinstance(files, dict) or not files or
+                    base != self.state['deployed'] or manifest['taskSourceDigest'] != digest or
+                    hashlib.sha256(json.dumps(files, sort_keys=True).encode()).hexdigest() != digest or
+                    self.state.get('automatic_deployment_hold', {}).get('source_digest', digest) != digest):
+                raise ValueError('Inconsistent protected source manifest')
+            if contents is not None:
+                if not isinstance(contents, dict) or set(contents) != set(files):
+                    raise ValueError('Incomplete approved source contents')
+                for name, expected in files.items():
+                    if hashlib.sha256(contents[name].encode('utf-8')).hexdigest() != expected:
+                        raise ValueError('Approved source contents changed')
+            for name, expected in files.items():
+                candidate = (source / name).resolve()
+                if not candidate.is_relative_to(source.resolve()):
+                    raise ValueError('Protected source path escapes snapshot')
+                if hashlib.sha256(candidate.read_bytes()).hexdigest() != expected:
+                    if contents is None or not self.preserves_source(candidate, base, name, contents[name]):
+                        raise ValueError('Protected live source differs')
+        except (OSError, ValueError, TypeError, KeyError, AttributeError, subprocess.SubprocessError):
+            raise DeployError('Main must include the protected live changes; verify and integrate the source manifest before deployment') from None
+
+    def preserves_source(self, candidate, base, name, approved):
+        """Allow newer main edits only when merging the authenticated live delta changes nothing."""
+        # Confirm an absent path before treating a newly added file's baseline as empty.
+        existing = self.git('ls-tree', '--name-only', base, '--', name)
+        baseline = b''
+        if existing:
+            if existing != name:
+                return False
+            result = subprocess.run(['git', '-C', str(self.repo), 'show', f'{base}:{name}'],
+                                    capture_output=True, timeout=120)
+            if result.returncode:
+                return False
+            baseline = result.stdout
+        with tempfile.TemporaryDirectory(prefix='fredy-source-merge-') as temporary:
+            folder = Path(temporary)
+            candidate_bytes = candidate.read_bytes()
+            for filename, content in [('candidate', candidate_bytes), ('base', baseline),
+                                      ('approved', approved.encode('utf-8'))]:
+                (folder / filename).write_bytes(content)
+            result = subprocess.run(['git', 'merge-file', '-p', '--', str(folder / 'candidate'),
+                                     str(folder / 'base'), str(folder / 'approved')],
+                                    capture_output=True, timeout=30)
+            return result.returncode == 0 and result.stdout == candidate_bytes
+
     def check(self, source, sha):
         command = ('unlink /fredy/db; unlink /fredy/conf; cp -a /source/. /fredy/ && '
                    'NODE_ENV=development yarn install --frozen-lockfile --production=false --ignore-scripts && '
@@ -233,6 +289,7 @@ class Deployer:
                 with tempfile.TemporaryDirectory(prefix='fredy-build-', dir=self.root) as temp:
                     source = Path(temp) / 'source'
                     self.archive(sha, source)
+                    self.validate_source(source)
                     if checks:
                         self.check(source, sha)
                     image = f'fredy-local:{sha[:12]}'
@@ -245,6 +302,9 @@ class Deployer:
                 old_path, old_image = self.switch(sha, image, next_compose, folder / 'backup')
                 self.state.update(deployed=sha, image=image, compose=str(next_compose), previous_compose=str(old_path),
                                   previous_image=old_image, deployed_at=time.time(), last_error=None)
+                for key in ['automatic_deployment_hold', 'worktree_source_digest', 'worktree_source_manifest']:
+                    self.state.pop(key, None)
+                self.state.get('failures', {}).pop(sha, None)
                 write_json(self.state_path, self.state)
                 worker_update = self.root / 'mac_mini.py.next'
                 worker_update.write_bytes(next_worker)
