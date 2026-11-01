@@ -1,0 +1,72 @@
+@import '../../tokens.less';
+
+.fitCard.searchWorkspace {
+  gap: @space-2;
+
+  > .fitSummary {
+    font-size: @text-xs;
+
+    strong {
+      font-size: inherit;
+    }
+  }
+  p {
+    margin: 0;
+  }
+  .searchWorkspace__actions {
+    margin-top: @space-1;
+    font-size: @text-xs;
+  }
+}
+
+.fitCard {
+  &__group {
+    display: flex;
+    align-items: baseline;
+    gap: @space-2;
+    min-width: 0;
+  }
+  &__groupLabel {
+    flex: 0 0 9ch;
+    color: @color-muted;
+    font-size: @text-xs;
+  }
+  &__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: @space-1;
+    min-width: 0;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  &__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: @space-1;
+    box-sizing: border-box;
+    max-width: min(36ch, 100%);
+    padding: @space-1 @space-2;
+    border-radius: @radius-pill;
+    color: @color-success;
+    background: @color-success-dim;
+    font-size: @text-xs;
+    line-height: 1.4;
+  }
+  &__chip--unmet {
+    color: @color-error;
+    background: @color-error-dim;
+  }
+  &__chip--unknown {
+    color: @color-warning;
+    background: rgb(@color-warning-rgb / 10%);
+  }
+  &__chipText {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  &__required {
+    flex-shrink: 0;
+  }
+}

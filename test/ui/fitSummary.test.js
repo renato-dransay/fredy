@@ -100,7 +100,7 @@ describe('Jev result display', () => {
     ])
       expect(html).toContain(value);
   });
-  it('renders the full result in the detail card with evidence inside an initially collapsed disclosure', () => {
+  it('renders pros, cons and unverified chips without the evidence report', () => {
     state.result = {
       stale: true,
       result: {
@@ -108,6 +108,8 @@ describe('Jev result display', () => {
         model: 'typesafe/jev-1.14-test',
         evaluatedAt: '2026-11-01T12:00:00Z',
         criteria: [
+          { id: 'rooms', text: 'At least 3 rooms', verdict: 'met', required: false },
+          { id: 'budget', text: 'Within budget', verdict: 'unmet', required: true },
           {
             id: 'dogs',
             text: 'Dog must be permitted',
@@ -126,13 +128,53 @@ describe('Jev result display', () => {
       'Must-have unmet',
       'Must-haves unverified',
       'Dog must be permitted',
-      'Ask the landlord about pets.',
-      'View 1 criteria and evidence',
+      'At least 3 rooms',
+      'Within budget',
+      'Pros',
+      'Cons',
+      'Unverified',
     ])
       expect(html).toContain(value);
-    expect(html).toContain('<details class="searchWorkspace__criterionDetails">');
-    expect(html).not.toContain('<details open');
+    for (const [verdict, text] of [
+      ['met', 'At least 3 rooms'],
+      ['unmet', 'Within budget'],
+      ['unknown', 'Dog must be permitted'],
+    ]) {
+      expect(html).toContain(`<li class="fitCard__chip fitCard__chip--${verdict}" title="${text}">`);
+      expect(html).toContain(`aria-labelledby="fit-one-${verdict}"`);
+    }
+    expect(html.match(/aria-label="Must-have"/g)).toHaveLength(2);
+    for (const reportText of [
+      '<details',
+      'Ask the landlord about pets.',
+      'listing.description:0',
+      en['search.scoreHelp'],
+      en['search.hardFailure'],
+      en['search.hardUnknown'],
+      en['search.stale'],
+      'confidence',
+      'typesafe/jev-1.14-test',
+    ])
+      expect(html).not.toContain(reportText);
     expect(html).toContain('/settings/search-profile');
+    state.result = null;
+  });
+  it('hides empty groups and keeps long or HTML-like requirements as escaped chip text', () => {
+    const text = '<script>unsafe()</script> ' + 'A long apartment requirement '.repeat(40);
+    state.result = {
+      result: {
+        score: 100,
+        coverage: 100,
+        criteria: [{ id: 'long', text, verdict: 'met' }],
+      },
+    };
+    const html = render(FitCard, { listingId: 'one', listing: { id: 'one' } });
+    expect(html).toContain('Pros');
+    expect(html).not.toContain('fitCard__chip--unmet');
+    expect(html).not.toContain('fitCard__chip--unknown');
+    expect(html).not.toContain('<script>');
+    expect(html).toContain('&lt;script&gt;unsafe()&lt;/script&gt;');
+    expect(html).toContain('class="fitCard__chipText"');
     state.result = null;
   });
 });
