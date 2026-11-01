@@ -49,3 +49,23 @@ Queue recovery: each unseen first-parent maincommit attempted in order. Failedch
 Browserstaging: profile save, application manualnote, numericfit100/100 withsourceevidence, reply and visit/followup display; APIisolates profiles and workflow acrossusers sharinglisting; visitICS valid; noJeVkey ->503notconfigured; nosmtp/imap ->explicitsetup. Noexternalmail sent. Screenshot outsideGit in .config/fredy-live/workspace-browser.jpg.
 Currentintegratedchecks: lint0warning0error, allformatcorrect, offline5120pass33skip, productionVitebuildpass. Log .config/fredy-live/integrated-checks-20261101.log. Oldbaseline5fixturefailures not hidden: currentroutingfixture mocks demo-account provisioning,13assertions pass independently; fullbaseline5037pass in currentdev.
 Finalqueue-reviewfinding accepted/closed: distinguish ordinary failedchecks from unresolvedruntime recovery. RecoveryError abortsqueue, persistsrecovery_required, blocksallfuturedeploys untiloperatorrecovery;11Python tests independentlypassed. No unresolvedsourceblockers beforecommit.
+
+## First main deployment verified
+- Pushed c6f63282afe367c2e966f42829bcbe07f4ae5916 to origin/main and set GitHubdefaultbranch main. GitHub sourcecheck and Tests both success. No PR was opened/requested.
+- Installed net.fredy.autodeploy LaunchAgent (RunAtLoad,60s). It independently fetched main, checked immutablearchive, built ARM64image and activated c6f6328. No manualdeploy command used.
+- Verified containerhealthy, OCIrevisionlabel c6f6328, HTTPS/api/deployment exactfullSHA+active=true. Adminlogin and securecookiepersisted, olddefaultpasswordrejected, configuredbaseURL/analytics/timezone preserved. New fit/application/mail endpoints authenticated/readable. Currentuserprofile remainsunconfiguredversion0; no testpreferences or applicationdata insertedinto production.
+- Verified snapshot at .config/fredy-live/deployments/1793530075-c6f63282afe3/backup, priorimage54e6b3d retained. AllTailscale exposure remainsprivate on9998.
+- Controlled providers cover Jev responses/SMTPacceptance/failure/IMAPmatching; realprovidercredentials+liveprovidercalls deferred by explicituserrequest. PublicOverpassliveprobe timedout and returnedunknown correctly; no claim of a successful live U2 route. TextMarkdown and email-only submission limitations documented.
+- Browserstaging savedrequirements and applicationnote through actualUI, fit100/100 with sourceevidence displayed. Productionread-onlynewendpoints verified. No real outboundmessages sent.
+- Added4timer-level scheduleracceptance tests (activation gate, reviewedrevision, nooverlapping tick, failedscheduleclear, five-minuteinboxcadence); allpass. Runtimecodeunchanged fromreviewed/deployedc6. This test/evidencepush will verify a genuinely subsequentmain-push trigger.
+
+## Acceptance status
+A1 PASS text/Markdown andeditablecriteria UI/API persistence.
+A2 PASS deterministicactualAPI, typedJev controlledtests, unknown/recovery/stale/privateprofile; livepaidprovidersetup user-deferred.
+A3 PASS timeline/manualreply/visit/followup/ICS and shared-listingprivateworkflow actualAPI+UI.
+A4 PASS controlledtransport/scheduledentrypoint/idempotency/uncertainoutcome, copyneverclaimsapplied; actualSMTPsetup user-deferred.
+A5 PASS controlledIMAPexactmessageID/cursor/dedup/configisolation; actualmailboxsetup user-deferred.
+A6 PASS sixlocales+boththemes/styleschecked, browserUI/profile/applicationflow.
+A7 PASS full5120/33skip+4newtargetedtimerchecks, lintformatbuild,11Pythonrecovery/queuechecks; immutablearchivegate also passedfirstdeployment.
+A8 PASS firstmainpush+actualdeployment/exactservedSHA/persistentlogin+settings and verifiedrollbacktest.
+A9 LaunchAgentandfirsttriggerPASS; subsequentrealpush verification pending.
