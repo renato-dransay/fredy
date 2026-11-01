@@ -19,10 +19,18 @@ import { I18nProvider } from '../../services/i18n/i18n.jsx';
  * unmount is deferred, because React refuses to tear a root down while it is rendering.
  */
 export function mountPopupNode(container, node, language) {
-  const root = createRoot(container);
+  // A popup may reopen before the deferred teardown runs. Each root owns a separate host so
+  // React cannot clear or remove the next opening's DOM while disposing of the previous one.
+  const host = document.createElement('div');
+  container.appendChild(host);
+  const root = createRoot(host);
   root.render(<I18nProvider language={language}>{node}</I18nProvider>);
 
+  let disposed = false;
   return () => {
+    if (disposed) return;
+    disposed = true;
+    host.remove();
     setTimeout(() => root.unmount(), 0);
   };
 }
