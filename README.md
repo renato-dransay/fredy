@@ -111,8 +111,10 @@ Fredy is in the [Unraid](https://unraid.net/) community store.
 -   🚆 **[Real travel times](doc/travel-time.md)** from your addresses by public transport, car, bike
     or on foot, plus a filter to match, and the transport network with live departures on the map
 -   🗺️ **Map and list together**: the list follows the visible map area when you pan or zoom,
-    using the same price, job and travel-time filters. Pins show your saved assessed fit with a
-    color, symbol and score; shared addresses show a count and mixed fit levels where applicable.
+    using the same price, job, travel-time and minimum listing-fit filters. Both the listings page
+    and map offer a minimum saved fit on the 0–10 scale and sorting by fit; unassessed listings are
+    excluded when a minimum is set and sort last in either direction. Pins show your saved assessed
+    fit with a color, symbol and score; shared addresses show a count and mixed fit levels where applicable.
     Choose “Show on map” to open an advert's pin. The list stays available in fullscreen and below
     the map on phones. Stale or unverified assessments cannot appear as a strong fit.
 -   📊 **Market benchmark**: the price per m² of every listing against the local median, so cheap and

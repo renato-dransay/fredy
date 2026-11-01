@@ -38,6 +38,7 @@ import { useScrollRestoration } from '../../hooks/useScrollRestoration.js';
 import { formatEuro } from '../cards/chartTheme.js';
 import { affordabilityFilterHelp } from '../../services/finance/rentBasis.js';
 import { subscribeJobEvents } from '../../services/sse/jobEvents.js';
+import { minFitCodec } from '../../services/listings/fitPresentation.js';
 import { listingSortPatch } from '../../services/listings/listingSort.js';
 
 /**
@@ -62,6 +63,7 @@ const LISTINGS_URL_STATE = {
   active: { defaultValue: true, codec: parseNullableBoolean },
   provider: { defaultValue: null, codec: parseString },
   status: { defaultValue: null, codec: parseString },
+  minFit: { defaultValue: null, codec: minFitCodec },
   afford: { defaultValue: null, codec: parseString },
   // Mode and ceiling in one key, as `transit:30`. Two keys would let a bookmarked URL carry half a
   // filter, which the server would then have to guess the other half of.

@@ -45,6 +45,7 @@ import { keepPopupInView, mountPopupNode } from '../../components/map/popupConte
 import NearbyStops from '../../components/transit/NearbyStops.jsx';
 import { COMMUTE_OPTIONS, parseCommuteFilter } from '../../components/transit/travelTimeFormat.js';
 import { formatEuroCompact } from '../../components/cards/chartTheme.js';
+import { MIN_FIT_OPTIONS, minFitCodec, filterByMinFit, sortByFit } from '../../services/listings/fitPresentation.js';
 import { normalizeTheme } from '../../services/theme/theme.js';
 
 /**
@@ -54,6 +55,8 @@ import { normalizeTheme } from '../../services/theme/theme.js';
  * Module scope so its identity is stable for the hook's memo.
  */
 const MAP_URL_STATE = {
+  minFit: { defaultValue: null, codec: minFitCodec },
+  fitSort: { defaultValue: null, codec: parseString },
   job: { defaultValue: null, codec: parseString },
   distance: { defaultValue: 0, codec: parseNumber },
   // Mode and ceiling in one key, as `transit:30`, so a bookmarked URL can never carry half a filter.
@@ -120,6 +123,8 @@ export default function MapView() {
   // tick, and separate setSearchParams calls overwrite each other.
   const { values: urlState, setValue: setUrlValue, setValues } = useUrlState(sp, MAP_URL_STATE);
   const {
+    minFit,
+    fitSort,
     job: jobId,
     distance: distanceFilter,
     commute: commuteFilter,
@@ -208,6 +213,7 @@ export default function MapView() {
   // Read from the address bar rather than from the controls, which the folded panel on a phone does
   // not render: what is on in the URL is what is hiding pins.
   const activeFilterCount = countActiveMapFilters({
+    minFit,
     jobId,
     commute: commuteFilter,
     priceMin: urlPriceMin,
@@ -270,7 +276,7 @@ export default function MapView() {
     // A listing without a price ("on request") only drops out once a price limit is set; without
     // one it has nothing to fail, and hiding it always left it off the map with no filter active.
     const priceLimited = urlPriceMin != null || urlPriceMax != null;
-    return listings
+    return filterByMinFit(listings, minFit)
       .filter((listing) => (listing.price ? listing.price >= min && listing.price <= max : !priceLimited))
       .filter(withinCommute);
   };
@@ -298,17 +304,27 @@ export default function MapView() {
   }
 
   // One shared filtered set for pins and viewport results. Camera changes only reselect results.
-  const filteredListings = useMemo(filterListings, [listings, filterRange, commuteFilter, urlPriceMin, urlPriceMax]);
+  const filteredListings = useMemo(filterListings, [
+    listings,
+    filterRange,
+    commuteFilter,
+    urlPriceMin,
+    urlPriceMax,
+    minFit,
+  ]);
   const visibleListings = useMemo(() => {
     if (!map.current) return [];
     const canvas = map.current.getContainer();
-    return listingsInViewport(
-      filteredListings,
-      (position) => map.current.project(position),
-      canvas.clientWidth,
-      canvas.clientHeight,
+    return sortByFit(
+      listingsInViewport(
+        filteredListings,
+        (position) => map.current.project(position),
+        canvas.clientWidth,
+        canvas.clientHeight,
+      ),
+      fitSort,
     );
-  }, [filteredListings, viewportRevision]);
+  }, [filteredListings, viewportRevision, fitSort]);
 
   useEffect(() => {
     if (!mapReady || !map.current) return undefined;
@@ -840,6 +856,46 @@ export default function MapView() {
                         {j.name}
                       </Select.Option>
                     ))}
+                  </Select>
+                </div>
+
+                <div className="map-panel__row">
+                  <Text id="map-min-fit-label" size="small" className="map-panel__label">
+                    {t('listings.filterMinFit')}
+                  </Text>
+                  <Select
+                    aria-labelledby="map-min-fit-label"
+                    placeholder={t('listings.filterAll')}
+                    showClear
+                    size="small"
+                    value={minFit}
+                    onChange={(value) => setUrlValue('minFit', value ?? null)}
+                    style={{ width: 160 }}
+                  >
+                    {MIN_FIT_OPTIONS.map((score) => (
+                      <Select.Option key={score} value={score}>
+                        {t('listings.filterMinFitOption', { score })}
+                      </Select.Option>
+                    ))}
+                  </Select>
+                </div>
+                <div className="map-panel__hint">{t('listings.filterMinFitHelp')}</div>
+
+                <div className="map-panel__row">
+                  <Text id="map-fit-sort-label" size="small" className="map-panel__label">
+                    {t('listings.sortPrefix')}
+                  </Text>
+                  <Select
+                    aria-labelledby="map-fit-sort-label"
+                    placeholder={t('map.sortDefault')}
+                    showClear
+                    size="small"
+                    value={fitSort === 'asc' || fitSort === 'desc' ? fitSort : null}
+                    onChange={(value) => setUrlValue('fitSort', value ?? null)}
+                    style={{ width: 160 }}
+                  >
+                    <Select.Option value="desc">{t('map.sortFitDescending')}</Select.Option>
+                    <Select.Option value="asc">{t('map.sortFitAscending')}</Select.Option>
                   </Select>
                 </div>
 

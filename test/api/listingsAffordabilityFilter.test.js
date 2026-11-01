@@ -323,3 +323,21 @@ describe('verdicts and the rent basis', () => {
     expect(body).toMatchObject({ charges_included: 1, charges: 90 });
   });
 });
+
+describe('GET /table minimum fit normalization', () => {
+  it.each([
+    ['75.5', 75.5],
+    ['0', 0],
+    ['100', 100],
+    ['', null],
+    ['101', null],
+    ['-1', null],
+    ['junk', null],
+  ])('normalizes %s to %s without changing session scope', async (value, expected) => {
+    const app = await buildApp();
+    const response = await app.inject({ method: 'GET', url: `/table?minFitScore=${value}` });
+    expect(response.statusCode).toBe(200);
+    expect(queryListings.mock.calls.at(-1)[0]).toMatchObject({ minFitScore: expected, userId: 'user-1' });
+    await app.close();
+  });
+});

@@ -3,6 +3,7 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
+import { minFitPercentage } from './fitPresentation.js';
 import { parseCommuteFilter } from '../../components/transit/travelTimeFormat.js';
 
 /**
@@ -32,6 +33,7 @@ export const NEUTRAL = {
   active: null,
   provider: null,
   status: null,
+  minFit: null,
   afford: null,
   commute: null,
   down: null,
@@ -56,6 +58,7 @@ export const FILTER_KEYS = [
   'active',
   'watch',
   'status',
+  'minFit',
   'afford',
   'commute',
   'down',
@@ -196,6 +199,7 @@ export function toListingsQuery(values) {
       // The server turns this into a price range from the saved profile; it ignores the
       // filter entirely when there is no profile to derive one from.
       affordabilityFilter: values.afford,
+      minFitScore: minFitPercentage(values.minFit),
       // Only listings that have actually been routed can satisfy this, which is why the control
       // is offered as an extra filter rather than as the default way to sort the page.
       ...(toTravelTimeQuery(values.commute) ?? {}),
@@ -234,6 +238,7 @@ export function describeActiveFilters(values, { t, jobs = [], providers = [] }) 
         accepted: t('listings.filterStatusAccepted'),
         none: t('listings.filterStatusNone'),
       })[values.status] ?? values.status,
+    minFit: () => t('listings.filterMinFitOption', { score: values.minFit }),
     afford: () =>
       ({
         affordable: t('listings.filterAffordabilityYes'),

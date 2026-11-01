@@ -41,3 +41,10 @@ describe('countActiveMapFilters', () => {
     expect(countActiveMapFilters({ jobId: 'job-1', commute: 'car:15', priceMin: 1000, priceMax: null })).toBe(3);
   });
 });
+
+it('counts a minimum fit even at zero, but ignores unset or invalid floors', () => {
+  expect(countActiveMapFilters({ minFit: 0 })).toBe(1);
+  expect(countActiveMapFilters({ minFit: 7.5 })).toBe(1);
+  expect(countActiveMapFilters({ minFit: null })).toBe(0);
+  expect(countActiveMapFilters({ minFit: 11 })).toBe(0);
+});

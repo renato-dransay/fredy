@@ -3,7 +3,7 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-import { fitTone } from '../../services/listings/fitPresentation.js';
+import { minFitPercentage, fitTone } from '../../services/listings/fitPresentation.js';
 import { parseCommuteFilter } from '../../components/transit/travelTimeFormat.js';
 
 /**
@@ -189,13 +189,19 @@ export const getBoundsFromCoords = (coords, padding = 0.1) => {
  * @param {Object} filters
  * @param {string|null} filters.jobId
  * @param {string|null} filters.commute - The `commute` URL value, e.g. `transit:30`.
+ * @param {number|null} filters.minFit - Optional floor on the ten-point scale.
  * @param {number|null} filters.priceMin - The `priceMin` URL value, null when absent.
  * @param {number|null} filters.priceMax - The `priceMax` URL value, null when absent.
  * @returns {number}
  */
-export const countActiveMapFilters = ({ jobId, commute, priceMin, priceMax }) => {
+export const countActiveMapFilters = ({ jobId, commute, priceMin, priceMax, minFit }) => {
   const bounded = (value) => Number.isFinite(value) && value > 0;
-  const active = [jobId != null, parseCommuteFilter(commute) != null, bounded(priceMin) || bounded(priceMax)];
+  const active = [
+    jobId != null,
+    parseCommuteFilter(commute) != null,
+    bounded(priceMin) || bounded(priceMax),
+    minFitPercentage(minFit) != null,
+  ];
   return active.filter(Boolean).length;
 };
 

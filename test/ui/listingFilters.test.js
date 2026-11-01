@@ -438,3 +438,19 @@ describe('listingFilters', () => {
     });
   });
 });
+
+describe('minimum listing fit filter', () => {
+  it('sends the ten-point floor as a percentage and names/clears it', () => {
+    const values = { ...defaults(), active: null, minFit: 7.5 };
+    expect(toListingsQuery(values).filter.minFitScore).toBe(75);
+    expect(countActiveFilters(values)).toBe(1);
+    expect(describeActiveFilters(values, { t })).toEqual([
+      { key: 'minFit', label: 'listings.filterMinFitOption:{"score":7.5}' },
+    ]);
+    expect(clearFilter('minFit')).toEqual({ minFit: null, page: 1 });
+    expect(clearAllFilters().minFit).toBeNull();
+  });
+  it('preserves an assessed zero floor', () => {
+    expect(toListingsQuery({ ...defaults(), minFit: 0 }).filter.minFitScore).toBe(0);
+  });
+});

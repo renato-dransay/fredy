@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { fitTone } from '../../ui/src/services/listings/fitPresentation.js';
+import { filterByMinFit, sortByFit, minFitCodec, fitTone } from '../../ui/src/services/listings/fitPresentation.js';
 import { groupFitTone, listingsInViewport, hasMapPosition } from '../../ui/src/views/listings/mapUtils.js';
 
 const assessed = (score, extra = {}) => ({ score, ...extra });
@@ -92,5 +92,44 @@ describe('visible map listings', () => {
     ['13', 52],
   ])('rejects unusable coordinates %s, %s', (longitude, latitude) => {
     expect(hasMapPosition({ longitude, latitude })).toBe(false);
+  });
+});
+
+describe('map listing fit controls', () => {
+  const rows = [
+    at('low', 5, 5, assessed(30)),
+    at('high', 6, 5, assessed(90)),
+    at('middle', 5, 5, assessed(75)),
+    at('none', 7, 5),
+    at('zero', 8, 5, assessed(0)),
+  ];
+  const ids = (listings) => listings.map(({ id }) => id);
+  it('filters the pin input, including threshold equality and genuine zero', () => {
+    expect(ids(filterByMinFit(rows, 7.5))).toEqual(['high', 'middle']);
+    expect(ids(filterByMinFit(rows, 0))).toEqual(['low', 'high', 'middle', 'zero']);
+    expect(filterByMinFit(rows, null)).toEqual(rows);
+  });
+  it.each([-1, 11, NaN, undefined, '7'])('ignores invalid floor %s', (value) => {
+    expect(filterByMinFit(rows, value)).toEqual(rows);
+  });
+  it('sorts viewport results after grouping, preserving every stack member and input', () => {
+    const visible = listingsInViewport(rows, ([x, y]) => ({ x, y }), 100, 100);
+    expect(ids(sortByFit(visible, 'desc'))).toEqual(['high', 'middle', 'low', 'zero', 'none']);
+    expect(ids(sortByFit(visible, 'asc'))).toEqual(['zero', 'low', 'middle', 'high', 'none']);
+    expect(rows[0].id).toBe('low');
+    expect(sortByFit(visible, null)).toEqual(visible);
+  });
+  it('uses publication date and id to break ties, as the listings page does', () => {
+    const tied = ['b', 'a', 'c'].map((id) => ({ id, fitSummary: assessed(80), created_at: id === 'c' ? 2 : 1 }));
+    expect(ids(sortByFit(tied, 'desc'))).toEqual(['c', 'a', 'b']);
+  });
+});
+
+describe('minimum fit URL codec', () => {
+  it.each(['', ' ', 'junk', '-1', '10.1', 'Infinity'])('ignores invalid bookmark %j', (raw) => {
+    expect(minFitCodec.parse(raw)).toBeNull();
+  });
+  it.each([0, 7.5, 10])('round trips %s', (value) => {
+    expect(minFitCodec.parse(minFitCodec.stringify(value))).toBe(value);
   });
 });

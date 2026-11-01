@@ -5,6 +5,7 @@
 
 import { Radio, RadioGroup, Select } from '@douyinfe/semi-ui-19';
 
+import { MIN_FIT_OPTIONS } from '../../services/listings/fitPresentation.js';
 import FilterSelect from './FilterSelect.jsx';
 import FilterDrawer, { FilterGroup, FilterHelp } from '../filters/FilterDrawer.jsx';
 import { COMMUTE_OPTIONS } from '../transit/travelTimeFormat.js';
@@ -122,54 +123,68 @@ export default function ListingsFilterPanel({
         </FilterSelect>
       </FilterGroup>
 
-      {(financeComplete || hasAddresses) && (
-        <FilterGroup title={t('listings.filterGroupFit')}>
-          {/* Only offered once the user has actually entered their financial data - there is
+      <FilterGroup title={t('listings.filterGroupFit')}>
+        <span id="listings-min-fit-label">{t('listings.filterMinFit')}</span>
+        <FilterSelect
+          help={t('listings.filterMinFitHelp')}
+          placeholder={t('listings.filterAll')}
+          aria-labelledby="listings-min-fit-label"
+          showClear
+          onChange={(val) => onChange({ minFit: val ?? null, page: 1 })}
+          value={values.minFit}
+          style={{ width: '100%' }}
+        >
+          {MIN_FIT_OPTIONS.map((score) => (
+            <Select.Option key={score} value={score}>
+              {t('listings.filterMinFitOption', { score })}
+            </Select.Option>
+          ))}
+        </FilterSelect>
+        {/* Only offered once the user has actually entered their financial data - there is
               nothing to measure a listing against otherwise. */}
-          {financeComplete && (
-            <FilterSelect
-              help={affordabilityHelp}
-              placeholder={t('listings.filterAffordabilityPlaceholder')}
-              showClear
-              onChange={(val) => {
-                onChange({ afford: val ?? null, page: 1 });
-                // Counted when it is switched on, not when it is cleared, and not on every page
-                // load that happens to carry the filter in its URL.
-                if (val != null) {
-                  onAffordabilityUsed();
-                }
-              }}
-              value={values.afford}
-              style={{ width: '100%' }}
-            >
-              <Select.Option value="affordable">{t('listings.filterAffordabilityYes')}</Select.Option>
-              <Select.Option value="stretch">{t('listings.filterAffordabilityStretch')}</Select.Option>
-              <Select.Option value="unaffordable">{t('listings.filterAffordabilityNo')}</Select.Option>
-            </FilterSelect>
-          )}
+        {financeComplete && (
+          <FilterSelect
+            help={affordabilityHelp}
+            placeholder={t('listings.filterAffordabilityPlaceholder')}
+            showClear
+            onChange={(val) => {
+              onChange({ afford: val ?? null, page: 1 });
+              // Counted when it is switched on, not when it is cleared, and not on every page
+              // load that happens to carry the filter in its URL.
+              if (val != null) {
+                onAffordabilityUsed();
+              }
+            }}
+            value={values.afford}
+            style={{ width: '100%' }}
+          >
+            <Select.Option value="affordable">{t('listings.filterAffordabilityYes')}</Select.Option>
+            <Select.Option value="stretch">{t('listings.filterAffordabilityStretch')}</Select.Option>
+            <Select.Option value="unaffordable">{t('listings.filterAffordabilityNo')}</Select.Option>
+          </FilterSelect>
+        )}
 
-          {/* Only offered once there is an address to measure a commute against, the same way the
+        {/* Only offered once there is an address to measure a commute against, the same way the
               affordability filter waits for a finance profile. */}
-          {hasAddresses && (
-            <FilterSelect
-              help={t('listings.filterCommuteHelp')}
-              placeholder={t('listings.filterCommutePlaceholder')}
-              showClear
-              onChange={(val) => onChange({ commute: val ?? null, page: 1 })}
-              value={values.commute}
-              style={{ width: '100%' }}
-            >
-              {COMMUTE_OPTIONS.map(({ mode, minutes }) =>
-                minutes.map((max) => (
-                  <Select.Option key={`${mode}:${max}`} value={`${mode}:${max}`}>
-                    {t('listings.filterCommuteOption', { mode: t(`travelTime.mode.${mode}`), minutes: max })}
-                  </Select.Option>
-                )),
-              )}
-            </FilterSelect>
-          )}
-        </FilterGroup>
-      )}
+        {hasAddresses && (
+          <FilterSelect
+            help={t('listings.filterCommuteHelp')}
+            placeholder={t('listings.filterCommutePlaceholder')}
+            showClear
+            onChange={(val) => onChange({ commute: val ?? null, page: 1 })}
+            value={values.commute}
+            style={{ width: '100%' }}
+          >
+            {COMMUTE_OPTIONS.map(({ mode, minutes }) =>
+              minutes.map((max) => (
+                <Select.Option key={`${mode}:${max}`} value={`${mode}:${max}`}>
+                  {t('listings.filterCommuteOption', { mode: t(`travelTime.mode.${mode}`), minutes: max })}
+                </Select.Option>
+              )),
+            )}
+          </FilterSelect>
+        )}
+      </FilterGroup>
 
       {/* Only offered while the operator has the enrichment on. With it off nothing is ever
           written to the columns these read, so every one of them would return an empty page. */}

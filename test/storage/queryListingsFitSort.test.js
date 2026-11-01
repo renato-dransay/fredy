@@ -13,7 +13,7 @@ vi.mock('../../lib/services/storage/SqliteConnection.js', () => ({
   },
 }));
 vi.mock('../../lib/services/similarity-check/similarityCache.js', () => ({ removeEntry: vi.fn() }));
-import { queryListings } from '../../lib/services/storage/listingsStorage.js';
+import { queryListings, deleteListingsByFilter } from '../../lib/services/storage/listingsStorage.js';
 
 beforeEach(() => {
   db = new Database(':memory:');
@@ -111,5 +111,30 @@ describe('saved JEV scores sorted in real SQLite', () => {
     expect(ids(page({ sortDir: 'desc; DROP TABLE listings;' }))).toEqual(ids(page({ sortDir: 'asc' })));
     expect(page({ userId: "alice' OR 1=1 --" }).totalNumber).toBe(0);
     expect(db.prepare('SELECT COUNT(*) AS n FROM listings').get().n).toBe(8);
+  });
+});
+
+describe('minimum saved listing fit', () => {
+  it('filters before pagination and counts only matches, including the threshold', () => {
+    const result = page({ minFitScore: 70, pageSize: 2 });
+    expect(result.totalNumber).toBe(3);
+    expect(ids(result)).toEqual(['high-a', 'high-b']);
+    expect(ids(page({ minFitScore: 70, pageSize: 2, page: 2 }))).toEqual(['shared']);
+    const byDate = ids(page({ minFitScore: 70, sortField: 'created_at' }));
+    expect(byDate[0]).toBe('shared');
+    expect(byDate.slice(1).sort()).toEqual(['high-a', 'high-b']);
+  });
+  it('keeps real zero but excludes unassessed and other-user-only scores', () => {
+    expect(ids(page({ minFitScore: 0 }))).toEqual(['high-a', 'high-b', 'shared', 'low', 'zero']);
+    expect(ids(page({ minFitScore: 90, isAdmin: true }))).toEqual(['private', 'high-a', 'high-b']);
+    expect(ids(page({ minFitScore: 90, userId: 'bob' }))).toEqual(['bob-only']);
+  });
+  it.each([null, undefined, NaN, -1, 101, '70; DROP TABLE listings;'])('ignores invalid floor %s', (minFitScore) => {
+    expect(ids(page({ minFitScore }))).toEqual(ids(page()));
+  });
+  it('uses exactly the same filter for bulk deletion', () => {
+    expect(deleteListingsByFilter({ userId: 'alice', minFitScore: 70 }).changes).toBe(3);
+    expect(ids(page())).toEqual(['low', 'zero', 'bob-only', 'unassessed']);
+    expect(db.prepare("SELECT manually_deleted FROM listings WHERE id = 'private'").get().manually_deleted).toBe(0);
   });
 });
