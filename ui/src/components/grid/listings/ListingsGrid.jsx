@@ -22,6 +22,7 @@ import ExclusiveBadge from '../../listings/ExclusiveBadge.jsx';
 import WatchToggle from '../../listings/WatchToggle.jsx';
 import ListingActions from '../../listings/ListingActions.jsx';
 import CommuteBadge from '../../transit/CommuteBadge.jsx';
+import FitSummary from '../../searchWorkspace/FitSummary.jsx';
 
 import './ListingsGrid.less';
 import { useTranslation, useLocale } from '../../../services/i18n/i18n.jsx';
@@ -136,6 +137,7 @@ const ListingsGrid = ({
               )}
 
               <ExclusiveBadge listing={item} />
+              <FitSummary summary={item.fitSummary} />
               {where && <span className="listingsGrid__card__meta">{where}</span>}
               {/* Compact on purpose: on a card the commute is a number you scan past twenty others,
                   not something you read. The detail page shows the full picture. */}

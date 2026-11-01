@@ -8,6 +8,7 @@ import Fastify from 'fastify';
 
 // Mock everything the listings route pulls in, so this suite exercises the affordability
 // translation and nothing else.
+vi.mock('../../lib/services/fit/storage.js', () => ({ attachFitSummaries: (rows) => rows }));
 vi.mock('../../lib/services/storage/listingsStorage.js', () => ({
   queryListings: vi.fn(() => ({ totalNumber: 0, page: 1, result: [] })),
   getAvailableProviders: vi.fn(() => []),

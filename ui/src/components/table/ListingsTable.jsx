@@ -19,6 +19,7 @@ import ExclusiveBadge from '../listings/ExclusiveBadge.jsx';
 import WatchToggle from '../listings/WatchToggle.jsx';
 import ListingActions from '../listings/ListingActions.jsx';
 import CommuteBadge from '../transit/CommuteBadge.jsx';
+import FitSummary from '../searchWorkspace/FitSummary.jsx';
 
 import './ListingsTable.less';
 import { useTranslation, useLocale } from '../../services/i18n/i18n.jsx';
@@ -84,6 +85,7 @@ const ListingsTable = ({
               </Link>
             )}
             <ExclusiveBadge listing={item} />
+            <FitSummary summary={item.fitSummary} />
             {/* Under the headline rather than in front of it. In front, the badge had to give up
                 its word to leave room for the title, and a warning without a word is a shape. */}
             {(!item.is_active || item.scam_signals?.length > 0 || item.scam_override != null) && (

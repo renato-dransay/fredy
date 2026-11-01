@@ -1,0 +1,22 @@
+@import '../../tokens.less';
+
+.fitSummary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: @space-1 @space-2;
+  font-size: @text-xs;
+  line-height: 1.5;
+  color: @color-muted;
+
+  strong {
+    color: @color-text;
+    font-weight: @weight-medium;
+  }
+  &__failure {
+    color: @color-error;
+  }
+  &__warning {
+    color: @color-warning;
+  }
+}

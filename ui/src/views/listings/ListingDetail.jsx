@@ -543,6 +543,7 @@ export default function ListingDetail() {
 
       <div className="listing-detail__grid">
         <div className="listing-detail__main">
+          <FitCard listingId={listingId} listing={listing} />
           <ListingPictures listing={listing} />
           <ApplicationTracker key={listingId} listingId={listingId} />
 
@@ -607,7 +608,6 @@ export default function ListingDetail() {
         </div>
 
         <aside className="listing-detail__rail">
-          <FitCard listingId={listingId} listing={listing} />
           <div className="listing-detail__sec--keyfacts">
             <ListingKeyFacts listing={listing} priceHistory={priceHistory} financeThresholds={financeThresholds} />
           </div>

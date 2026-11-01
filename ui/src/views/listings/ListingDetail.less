@@ -165,8 +165,7 @@
     }
   }
 
-  /* One column. The pictures still lead, as they do beside the rail: on a phone the photograph is
-     not tall enough to be a wall, and the price follows it directly. */
+  /* One column. The fit assessment stays near the title, then pictures and the price. */
   @media (max-width: 1180px) {
     &__grid {
       display: flex;
@@ -183,6 +182,9 @@
       display: contents;
     }
 
+    &__sec--fit {
+      order: 0;
+    }
     &__sec--media {
       order: 1;
     }
