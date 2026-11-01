@@ -259,6 +259,7 @@
   "listings.toastReactivateError": "Failed to mark the listing as available",
   "listings.tooltipUndelete": "Restore Listing",
   "listings.tooltipReactivate": "Mark as available again",
+  "listings.sortByJevScore": "JEV score",
   "listings.sortByJobName": "Job Name",
   "listings.sortByListingDate": "Listing Date",
   "listings.sortByDateAdded": "Date Added",

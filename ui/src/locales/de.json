@@ -259,6 +259,7 @@
   "listings.toastReactivateError": "Inserat konnte nicht als verfügbar markiert werden",
   "listings.tooltipUndelete": "Inserat wiederherstellen",
   "listings.tooltipReactivate": "Wieder als verfügbar markieren",
+  "listings.sortByJevScore": "JEV-Bewertung",
   "listings.sortByJobName": "Suchauftrag",
   "listings.sortByListingDate": "Inserat-Datum",
   "listings.sortByDateAdded": "Hinzugefügt am",

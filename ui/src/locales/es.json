@@ -259,6 +259,7 @@
   "listings.toastReactivateError": "No se ha podido marcar el anuncio como disponible",
   "listings.tooltipUndelete": "Recuperar el anuncio",
   "listings.tooltipReactivate": "Marcar como disponible otra vez",
+  "listings.sortByJevScore": "Puntuación JEV",
   "listings.sortByJobName": "Nombre de la búsqueda",
   "listings.sortByListingDate": "Fecha de publicación",
   "listings.sortByDateAdded": "Fecha de incorporación",

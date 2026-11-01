@@ -1,0 +1,11 @@
+# Sort listings by saved JEV score
+
+User request: sort listings by JEV score with best matches first. Continue established main push/deploy authorization for this feature. Base21f28c98bdc72e490dfe7f152b36dfecf0e962ff; isolated detached checkout preserves concurrent primary edits.
+
+Contract: S1 Add JEV score to the existing sort selector; choosing it sets descending and page1 even after an ascending price sort. S2 Sort all matching listings in SQL before pagination by acting user's saved score, never owner/otheruser scores; unassessed last in both directions, genuine zero assessed. Stable date/id tie breakers. Existing filters/count/other sorts remain unchanged. S3 Persist sort in existing URL state, respect ascending toggle, retain stale/failed/unknown warnings and perform no inference or profile changes. S4 RealSQLite ordering/pagination/privacy tests, query/URL integration checks, required lint/format/full offline/build/deployment checks and live sorted-page acceptance; disclose prior disabled browser limitation.
+
+Design: conditional current-user LEFT JOIN of apartment_fit_results for fit_score only. ORDER BY missing-score first marker ASC, numeric saved score chosen direction, listing publication date DESC, id ASC; count query unchanged, no full private result selected. New selector label in six locales. Existing listing-date default preserved; provide direct sorted URL. Stale receipts are sorted by their stored score and retain out-of-date warning; sorting does not assess/reassess anything.
+
+Plan: failing storage and UI-query tests -> SQL + selector URL patch -> focused/full checks + independent review -> commit only feature, push/deploy existing guarded worker, verify descending pages vs full snapshot and ascending null placement through actual API. No schema changes.
+
+Evidence: baseline62focusedPASS; newrealSQLite tests reproduced4FAIL/2PASS forunsupportedscore sort, thenall6PASS.3URL-hook testsPASS; independentread-only plan/finalreviewPASS and9newtests independentlyrun. Finalfullsuite5187PASS/33skipped;lint/format/buildPASS;11deploymentrecoverytestsPASS;diffwhitespacePASS. Existingvendorbuildwarningsunchanged. No browserinteraction claimed (Worksettingpreviouslydisabled). No modelcalls or privateprofileedits. Readyforimmutabledeploymentgates and actualAPIpageordering checks.

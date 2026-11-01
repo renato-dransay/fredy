@@ -259,6 +259,7 @@
   "listings.toastReactivateError": "İlan mevcut olarak işaretlenemedi",
   "listings.tooltipUndelete": "İlanı Geri Yükle",
   "listings.tooltipReactivate": "Yeniden mevcut olarak işaretle",
+  "listings.sortByJevScore": "JEV puanı",
   "listings.sortByJobName": "İş Adı",
   "listings.sortByListingDate": "İlan tarihi",
   "listings.sortByDateAdded": "Eklenme tarihi",

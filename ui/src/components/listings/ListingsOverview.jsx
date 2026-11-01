@@ -38,6 +38,7 @@ import { useScrollRestoration } from '../../hooks/useScrollRestoration.js';
 import { formatEuro } from '../cards/chartTheme.js';
 import { affordabilityFilterHelp } from '../../services/finance/rentBasis.js';
 import { subscribeJobEvents } from '../../services/sse/jobEvents.js';
+import { listingSortPatch } from '../../services/listings/listingSort.js';
 
 /**
  * Listings fetched per page. Large enough that the grid fills a desktop screen without paging,
@@ -109,8 +110,8 @@ const ListingsOverview = ({ onAddListing } = {}) => {
   // component reads on its own is named here.
   const { page, sort: sortField, dir: sortDir, q: freeTextFilter, hidden: hiddenOnly } = values;
   const setPage = (value) => setValue('page', value);
-  const setSortField = (value) => setValue('sort', value);
-  const setSortDir = (value) => setValue('dir', value);
+  const setSortField = (value) => setValues(listingSortPatch(value));
+  const setSortDir = (value) => setValues({ dir: value, page: 1 });
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   // The id of the listing whose application letter is open. One dialog for the whole page rather
   // than one per row: only ever one is open, and a modal per card would mount hundreds of them.
@@ -346,6 +347,7 @@ const ListingsOverview = ({ onAddListing } = {}) => {
             value={sortField}
             onChange={(val) => setSortField(val)}
           >
+            <Select.Option value="fit_score">{t('listings.sortByJevScore')}</Select.Option>
             <Select.Option value="job_name">{t('listings.sortByJobName')}</Select.Option>
             {/* The date the portal states, falling back to the day Fredy found the listing - the
                 order the list reads in by default. "created_at" alone is the other thing entirely:
