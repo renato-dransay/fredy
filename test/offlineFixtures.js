@@ -427,7 +427,19 @@ export function buildFetchMock() {
 
       const requestedType = new URL(urlStr).searchParams.get('realestatetype');
       const responseData = withRealEstateType(immoscoutListData[country], requestedType);
-      return { ok: true, status: 200, json: () => Promise.resolve(responseData) };
+      // The fixture records one page, not the other pages its original response advertised.
+      // Multi-page behavior is exercised by the pagination suite's distinct page responses.
+      return {
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            ...responseData,
+            pageNumber: 1,
+            numberOfPages: 1,
+            totalResults: responseData.resultListItems.length,
+          }),
+      };
     }
 
     // The exposé endpoint carries no geocode - both sites' adverts share one identifier space -

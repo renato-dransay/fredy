@@ -35,6 +35,8 @@ let immoscoutDetail;
 
 beforeEach(async () => {
   immoscoutList = JSON.parse(await readFixture('immoscout_list.json'));
+  // This parser regression has one recorded page; pagination has its own multi-page suite.
+  immoscoutList.numberOfPages = 1;
   immoscoutDetail = JSON.parse(await readFixture('immoscout_detail.json'));
 
   vi.stubGlobal('fetch', async (url) => {

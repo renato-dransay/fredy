@@ -19,6 +19,7 @@ import { getAddresses } from '../../utils.js';
 import { lagecheckUrl } from '../../services/listings/lagecheckUrl.js';
 import { xhrPost, xhrGet, xhrDelete, errorMessage } from '../../services/xhr.js';
 import ListingDeletionModal from '../../components/ListingDeletionModal.jsx';
+import ExclusiveBadge from '../../components/listings/ExclusiveBadge.jsx';
 import ApplicationModal from './components/ApplicationModal.jsx';
 import FitCard from '../../components/searchWorkspace/FitCard.jsx';
 import ApplicationTracker from '../../components/searchWorkspace/ApplicationTracker.jsx';
@@ -538,6 +539,7 @@ export default function ListingDetail() {
         onPickOnMap={startPinDrop}
         onStatusChange={handleStatusChange}
       />
+      <ExclusiveBadge listing={listing} />
 
       <div className="listing-detail__grid">
         <div className="listing-detail__main">

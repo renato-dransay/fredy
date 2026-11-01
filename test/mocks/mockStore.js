@@ -16,6 +16,7 @@ export const getKnownListingHashesForJobAndProvider = (jobKey, providerId) => {
 export const getListingsByLinkForJobAndProvider = () => [];
 export const setListingHash = () => undefined;
 export const markListingsPriceChecked = () => undefined;
+export const refreshListingExclusivity = () => undefined;
 
 /**
  * Forget every stored listing.

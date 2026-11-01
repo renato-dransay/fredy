@@ -1,0 +1,18 @@
+# ImmoScout pagination and exclusive listings
+
+User request 2026-11-01: fix pagination, retain exclusive badges/expiry, enable descriptions, run tests and push main; evaluate/use five-minute polling if reasonable. Existing unrelated working-tree changes must remain uncommitted.
+
+Acceptance:
+- P1 Follow every advertised mobile API page from page one; unique adverts, bounded timeout/page count, paced requests, no silent success on failed/truncated pagination. Both DE and AT share the engine.
+- P2 Carry exclusive state, provider label and epoch-ms expiry through parsing, additive migration 56, insertion and refresh of already-known adverts without new-listing notifications or mutation of notes/status. UI overview/table/detail show current badges and expiry; expired badges disappear. Read APIs/MCP retain metadata.
+- P3 Enable ImmoScout detail enrichment for the live owner's existing account, preserving other preferences. Backfill existing missing descriptions using the existing guarded refetch service after rollout.
+- P4 Validate load and set live interval to five minutes if suitable; no Chromium for this provider, paced new-detail requests, run overlap guard, rate-limit failures surfaced. No global default interval change for other installations.
+- P5 Focused failure/regression tests, full offline tests, lint, formatting/build; independent plan/final review; scoped commit and normal push to origin/main. Auto-deployer follows main; verify served revision and persisted behavior separately.
+
+Plan: review existing flow and plan; implement provider pagination + metadata, schema/storage refresh and UI; test and review; configure runtime via authenticated existing APIs; commit only scoped files, push; observe existing auto-deployment and verify actual run/database. Additive migration rollback uses existing deploy backup/activation gate.
+
+Live baseline: 194 raw matches, four pages (50/50/50/44); 54 saved, none with descriptions. 16 active paywall-labelled adverts in source, 15 already saved. Anonymous discovery works for samples; authenticated premium/prepublication completeness remains unverified. Mobile search four pages completed in under two seconds; no evidence that provider permits a particular rate.
+
+Progress: independent plan review identified fixed page fixtures and missing detail timeout; both addressed, with regression tests. Full baseline5126 pass/33skip. First full changed run found two direct fixture mocks still advertising23 pages; corrected mock metadata, not assertions. Runtime owner enrichment enabled via API and sequential backfill completed54 updated/54 persisted descriptions. Final review identified empty advertised page silently accepted; now rejected with regression. UI component render/expiry/clock checks passed. Global formatting/lint and frontend build passed; Python deployment tests passed. Final full suite to rerun after final review fix.
+
+Final review PASS after empty-page regression fix (40 independently executed focused checks). Full working-tree suite:5155 passed/33skipped. Exact staged source snapshot /tmp/fredy-pagination-source.87CG8w with its own frozen dependencies:5166 passed/33skipped across392 passing files/1skipped; lint, full formatting and Vite production build pass. Build emitted existing dependency eval/dynamic-import warnings.11 deployment unit tests pass. Browser visual QA unavailable because Work browser access is disabled; actual badge server rendering/locale/expiry/clock behavior tested. Live interval persisted5 via settings API; owner provider_details includes immoscout,54/54 existing descriptions backfilled through API. Source commit excludes unrelated dirty application-removal/locales/package work. Push/auto-deploy/full run acceptance pending.
