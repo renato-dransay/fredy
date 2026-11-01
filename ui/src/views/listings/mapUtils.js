@@ -3,6 +3,7 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
+import { fitTone } from '../../services/listings/fitPresentation.js';
 import { parseCommuteFilter } from '../../components/transit/travelTimeFormat.js';
 
 /**
@@ -62,7 +63,7 @@ export const groupListingsByPosition = (listings) => {
 
   for (const listing of listings || []) {
     const { latitude, longitude } = listing;
-    if (latitude == null || longitude == null || latitude === -1 || longitude === -1) {
+    if (!hasMapPosition(listing)) {
       continue;
     }
 
@@ -181,7 +182,7 @@ export const getBoundsFromCoords = (coords, padding = 0.1) => {
  * panel folding shut on the way back is exactly when this matters.
  *
  * Counted is what `filterListings` and the job selection actually apply, and nothing else. The
- * distance ring recolours pins rather than hiding them, so it is not a filter in this sense. A
+ * distance ring outlines pins rather than hiding them, so it is not a filter in this sense. A
  * commute value the parser rejects hides nothing and does not count, and the price range is one
  * filter whichever of its two ends is set.
  *
@@ -197,3 +198,46 @@ export const countActiveMapFilters = ({ jobId, commute, priceMin, priceMax }) =>
   const active = [jobId != null, parseCommuteFilter(commute) != null, bounded(priceMin) || bounded(priceMax)];
   return active.filter(Boolean).length;
 };
+
+/**
+ * Only finite geographical coordinates can be projected. -1 is Fredy's failed-geocode sentinel.
+ * @param {{latitude: number, longitude: number}} listing
+ * @returns {boolean}
+ */
+export function hasMapPosition({ latitude, longitude }) {
+  return (
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    latitude !== -1 &&
+    longitude !== -1 &&
+    Math.abs(latitude) <= 90 &&
+    Math.abs(longitude) <= 180
+  );
+}
+
+/**
+ * Keep every advert sharing a pin, using its projected position so rotated/pitched maps match
+ * the actual canvas. The caller supplies only listings passing the map's active filters.
+ * @param {Object[]} listings
+ * @param {(coordinates: number[]) => {x: number, y: number}} project
+ * @param {number} width Canvas width in CSS pixels.
+ * @param {number} height Canvas height in CSS pixels.
+ * @returns {Object[]}
+ */
+export function listingsInViewport(listings, project, width, height) {
+  if (width <= 0 || height <= 0) return [];
+  return groupListingsByPosition(listings).flatMap(({ lng, lat, listings: grouped }) => {
+    const { x, y } = project([lng, lat]);
+    return x >= 0 && y >= 0 && x <= width && y <= height ? grouped : [];
+  });
+}
+
+/**
+ * A shared-address pin never lets one assessment conceal another. Different tones are explicit.
+ * @param {Object[]} listings
+ * @returns {'unassessed'|'low'|'medium'|'high'|'mixed'}
+ */
+export function groupFitTone(listings) {
+  const tones = new Set(listings.map((listing) => fitTone(listing.fitSummary)));
+  return tones.size > 1 ? 'mixed' : (tones.values().next().value ?? 'unassessed');
+}

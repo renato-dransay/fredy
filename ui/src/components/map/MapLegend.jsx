@@ -3,6 +3,7 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
+import { FIT_PIN_SYMBOLS } from './fitPinSymbols.js';
 import { MARKER_COLORS } from './markerColors.js';
 import { useTranslation } from '../../services/i18n/i18n.jsx';
 
@@ -11,11 +12,9 @@ import './MapLegend.less';
 /**
  * What the colours on the map mean.
  *
- * Four of them carry meaning - a listing, a stack of listings at one address, a listing inside the
- * distance ring, one of the user's own addresses - and until now nothing said so.
+ * Fit symbols mirror the pins; distance has a separate outline and shared addresses a count.
  *
- * Only the entries that are actually on screen. A key explaining an orange pin on a map with no
- * ring is a key that has to be read past.
+ * Fit levels are always explained; stack, distance and home entries appear when applicable.
  *
  * @param {Object} props
  * @param {boolean} props.hasStacks
@@ -27,11 +26,11 @@ export default function MapLegend({ hasStacks, hasRing, hasHome }) {
   const t = useTranslation();
 
   const entries = [
-    { key: 'listing', color: MARKER_COLORS.listing, show: true },
+    ...Object.entries(FIT_PIN_SYMBOLS).map(([key, symbol]) => ({ key, symbol, show: true })),
     // No colour of its own: the dot takes the badge's text-colour token from the stylesheet, so it
     // is the same as the badge it explains in both themes.
     { key: 'stack', color: null, show: hasStacks },
-    { key: 'inRing', color: MARKER_COLORS.inRing, show: hasRing },
+    { key: 'inRing', show: hasRing },
     { key: 'home', color: MARKER_COLORS.home, show: hasHome },
   ].filter((entry) => entry.show);
 
@@ -40,10 +39,17 @@ export default function MapLegend({ hasStacks, hasRing, hasHome }) {
       {entries.map((entry) => (
         <span className="mapLegend__entry" key={entry.key}>
           <span
-            className={`mapLegend__dot mapLegend__dot--${entry.key}`}
+            className={
+              entry.symbol
+                ? `mapLegend__symbol mapLegend__symbol--${entry.key}`
+                : `mapLegend__dot mapLegend__dot--${entry.key}`
+            }
+            aria-hidden="true"
             style={entry.color == null ? undefined : { background: entry.color }}
-          />
-          {t(`map.legend.${entry.key}`)}
+          >
+            {entry.symbol}
+          </span>
+          {t(entry.symbol ? `map.fit.${entry.key}` : `map.legend.${entry.key}`)}
         </span>
       ))}
     </div>

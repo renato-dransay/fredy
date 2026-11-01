@@ -242,10 +242,9 @@ describe('the page', () => {
     expect(mapLess).toMatch(/&__groupTitle \{[\s\S]*?\.map-shell__expand \{[\s\S]*?height: 24px/);
   });
 
-  it('folds the panel away on a phone, where it would cover the whole map', () => {
-    // The same width below which the listing detail folds its cards, from the one place both read.
-    expect(viewJsx).toMatch(/foldable=\{screenWidth < PHONE_BREAKPOINT\}/);
-    expect(viewJsx).toMatch(/import \{ PHONE_BREAKPOINT, useScreenWidth \} from '\.\.\/\.\.\/hooks\/screenWidth\.js';/);
+  it('folds filters based on the actual canvas width, including a desktop split view', () => {
+    expect(viewJsx).toMatch(/foldable=\{canvasWidth < 1000\}/);
+    expect(viewJsx).toMatch(/setCanvasWidth\(instance.getContainer\(\).clientWidth\)/);
   });
 
   it('counts the filters a folded panel hides, so an emptier map explains itself', () => {
@@ -378,7 +377,7 @@ describe('the view state survives a trip to a detail page and back', () => {
     // that had just been opened.
     expect(viewJsx).toMatch(/openListingIdRef/);
     const deps = viewJsx.match(
-      /\}, \[listings, filterRange, homeAddresses, distanceFilter, commuteFilter, isDark\]\);/,
+      /\}, \[listings, filterRange, homeAddresses, distanceFilter, commuteFilter, isDark, filteredListings\]\);/,
     );
     expect(deps, 'the marker effect keeps its dependency list').not.toBeNull();
   });

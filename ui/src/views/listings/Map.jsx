@@ -16,6 +16,8 @@ import {
   getBoundsFromCenter,
   getBoundsFromCoords,
   groupListingsByPosition,
+  groupFitTone,
+  listingsInViewport,
 } from './mapUtils.js';
 import { Select, Switch, Toast, Typography } from '@douyinfe/semi-ui-19';
 
@@ -31,10 +33,12 @@ import { createListingPopupContent, escapeHtml } from './listingPopupContent.jsx
 // component with no props, which fails somewhere inside it rather than where it was written.
 import MapCanvas, { isDarkBasemap } from '../../components/map/Map.jsx';
 import MapLegend from '../../components/map/MapLegend.jsx';
+import MapResults from './components/MapResults.jsx';
+import { FIT_PIN_SYMBOLS } from '../../components/map/fitPinSymbols.js';
+import { formatDecimal } from '../../services/number/numberService.js';
 import MapFilterPanel from './components/MapFilterPanel.jsx';
 import { MARKER_COLORS } from '../../components/map/markerColors.js';
 import { useProviderCountries } from '../../hooks/useProviderCountries.js';
-import { PHONE_BREAKPOINT, useScreenWidth } from '../../hooks/screenWidth.js';
 import Headline from '../../components/headline/Headline.jsx';
 import { useTranslation, useLocale } from '../../services/i18n/i18n.jsx';
 import { keepPopupInView, mountPopupNode } from '../../components/map/popupContent.jsx';
@@ -85,6 +89,10 @@ export default function MapView() {
   const locale = useLocale();
   const map = useRef(null);
   const markers = useRef([]);
+  const listingPins = useRef(new Map());
+  const [viewportRevision, setViewportRevision] = useState(0);
+  const [mapReady, setMapReady] = useState(false);
+  const [loading, setLoading] = useState(true);
   const homeMarkers = useRef([]);
   // Every React tree mounted into a popup, so they can be torn down with their markers.
   const popupRoots = useRef([]);
@@ -205,7 +213,7 @@ export default function MapView() {
     priceMin: urlPriceMin,
     priceMax: urlPriceMax,
   });
-  const screenWidth = useScreenWidth();
+  const [canvasWidth, setCanvasWidth] = useState(0);
 
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [listingToDelete, setListingToDelete] = useState(null);
@@ -270,7 +278,7 @@ export default function MapView() {
   /**
    * Whether a listing is reachable within the selected ceiling.
    *
-   * Unlike the distance ring, which only recolours pins, this one hides them: a commute ceiling is
+   * Unlike the distance ring, which outlines pins, this one hides them: a commute ceiling is
    * asked as "show me only what I could actually live with", and a pin that fails it is noise.
    *
    * A listing that has not been routed yet has nothing to answer with and drops out, which is why
@@ -289,16 +297,59 @@ export default function MapView() {
     );
   }
 
+  // One shared filtered set for pins and viewport results. Camera changes only reselect results.
+  const filteredListings = useMemo(filterListings, [listings, filterRange, commuteFilter, urlPriceMin, urlPriceMax]);
+  const visibleListings = useMemo(() => {
+    if (!map.current) return [];
+    const canvas = map.current.getContainer();
+    return listingsInViewport(
+      filteredListings,
+      (position) => map.current.project(position),
+      canvas.clientWidth,
+      canvas.clientHeight,
+    );
+  }, [filteredListings, viewportRevision]);
+
+  useEffect(() => {
+    if (!mapReady || !map.current) return undefined;
+    const instance = map.current;
+    const update = () => {
+      setCanvasWidth(instance.getContainer().clientWidth);
+      setViewportRevision((revision) => revision + 1);
+    };
+    instance.on('moveend', update);
+    instance.on('resize', update);
+    instance.on('load', update);
+    update();
+    // MapLibre tracks window resizes; a sidebar or parent layout can resize just the container.
+    const observer = new ResizeObserver(() => instance.resize());
+    observer.observe(instance.getContainer());
+    return () => {
+      instance.off('moveend', update);
+      instance.off('resize', update);
+      instance.off('load', update);
+      observer.disconnect();
+    };
+  }, [mapReady]);
+
+  const highlightListing = (id) => {
+    markers.current.forEach((marker) => marker.getElement().classList.remove('map-fit-pin--highlighted'));
+    listingPins.current.get(id)?.marker.getElement().classList.add('map-fit-pin--highlighted');
+  };
+
+  const locateListing = (id) => listingPins.current.get(id)?.open();
+
   // Whether any pin stands for more than one listing, which is the only thing the "stack" entry in
   // the legend explains. Computed from the same grouping the markers are built from, so the legend
   // cannot claim a stack that is not on the map.
   const hasStacks = useMemo(
-    () => groupListingsByPosition(filterListings()).some((group) => group.listings.length > 1),
-    [listings, filterRange, commuteFilter],
+    () => groupListingsByPosition(filteredListings).some((group) => group.listings.length > 1),
+    [filteredListings],
   );
 
   const handleMapReady = (mapInstance) => {
     map.current = mapInstance;
+    setMapReady(true);
   };
 
   /**
@@ -356,9 +407,12 @@ export default function MapView() {
   };
 
   const fetchListings = async () => {
-    actions.listingsData.getListingsForMap({
-      jobId,
-    });
+    setLoading(true);
+    try {
+      await actions.listingsData.getListingsForMap({ jobId });
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -420,6 +474,7 @@ export default function MapView() {
     isTearingDownRef.current = true;
     markers.current.forEach((marker) => marker.remove());
     markers.current = [];
+    listingPins.current.clear();
 
     homeMarkers.current.forEach((marker) => marker.remove());
     homeMarkers.current = [];
@@ -528,7 +583,7 @@ export default function MapView() {
     // One marker per position rather than per listing: listings that share an address (a whole
     // house, or a town that could only be geocoded to its centre) used to stack invisibly, with
     // only the topmost one reachable.
-    groupListingsByPosition(filterListings()).forEach(({ lat, lng, listings: grouped }) => {
+    groupListingsByPosition(filteredListings).forEach(({ lat, lng, listings: grouped }) => {
       let popup = null;
       let stopFit = null;
 
@@ -543,7 +598,7 @@ export default function MapView() {
       // to reopen and this the popup allowed to clear the param again.
       const holdsOpenListing = () => grouped.some((listing) => listing.id === openListingIdRef.current);
 
-      const { element, transitMount, activate, unmount, currentId } = createListingPopupContent({
+      const { element, transitMount, activate, unmount, currentId, showListing } = createListingPopupContent({
         listings: grouped,
         t,
         locale,
@@ -612,19 +667,48 @@ export default function MapView() {
         setOpenListingRef.current(null);
       });
 
-      // The commute verdict is drawn as the shape underneath rather than onto the pin, so the only
-      // thing left that recolours a pin is the distance ring, which is asked for explicitly.
-      let color = MARKER_COLORS.listing;
-      if (distanceFilter > 0 && homeAddresses.length > 0) {
-        const inRange = homeAddresses.some(
+      const tone = groupFitTone(grouped);
+      const pin = document.createElement('button');
+      pin.type = 'button';
+      pin.className = `map-fit-pin map-fit-pin--${tone}`;
+      const score =
+        grouped.length === 1 && Number.isFinite(grouped[0].fitSummary?.score)
+          ? formatDecimal(Math.round(Math.max(0, Math.min(100, grouped[0].fitSummary.score))) / 10, locale)
+          : null;
+      pin.textContent = `${FIT_PIN_SYMBOLS[tone]}${score == null ? '' : ` ${score}`}`;
+      const label = [
+        t(`map.fit.${tone}`),
+        score == null ? null : t('search.summaryScore', { value: score }),
+        grouped.length > 1 ? t('map.popupSameAddress', { count: grouped.length }) : grouped[0].title,
+      ]
+        .filter(Boolean)
+        .join(' · ');
+      pin.title = label;
+      pin.setAttribute('aria-label', label);
+      if (
+        distanceFilter > 0 &&
+        homeAddresses.some(
           (home) => distanceMeters(home.coords.lat, home.coords.lng, lat, lng) <= distanceFilter * 1000,
-        );
-        if (inRange) {
-          color = MARKER_COLORS.inRing;
-        }
-      }
-
-      const marker = new maplibregl.Marker({ color }).setLngLat([lng, lat]).setPopup(popup).addTo(map.current);
+        )
+      )
+        pin.classList.add('map-fit-pin--in-ring');
+      const marker = new maplibregl.Marker({ element: pin }).setLngLat([lng, lat]).setPopup(popup).addTo(map.current);
+      // Native buttons synthesize click after Enter/Space; MapLibre also handles keypress.
+      // Handle keydown once and suppress the native default to avoid opening then closing it.
+      pin.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        marker.togglePopup();
+      });
+      grouped.forEach((listing) =>
+        listingPins.current.set(listing.id, {
+          marker,
+          open: () => {
+            showListing(listing.id);
+            if (!popup.isOpen()) marker.togglePopup();
+          },
+        }),
+      );
 
       if (grouped.length > 1) {
         // Says how many listings hide behind this pin, so a stack is recognisable before opening it.
@@ -666,7 +750,7 @@ export default function MapView() {
     // has to redraw it. Without it the dark variant would only appear the next time one of the
     // others changed. The open popup is deliberately *not* in here - it is read through a ref, see
     // openListingIdRef, because rebuilding the markers would close the popup that just opened.
-  }, [listings, filterRange, homeAddresses, distanceFilter, commuteFilter, isDark]);
+  }, [listings, filterRange, homeAddresses, distanceFilter, commuteFilter, isDark, filteredListings]);
 
   return (
     <>
@@ -678,6 +762,15 @@ export default function MapView() {
         <div className="map-view-container__map-wrapper">
           <MapCanvas
             countries={countries}
+            sidebar={
+              <MapResults
+                listings={visibleListings}
+                selectedId={openListingId}
+                onLocate={locateListing}
+                onHighlight={highlightListing}
+                loading={loading || !mapReady}
+              />
+            }
             style={style}
             show3dBuildings={show3dBuildings}
             showTransit={showTransit}
@@ -718,7 +811,7 @@ export default function MapView() {
                  panel: it is a control over the map as a whole, and that is the line that names the
                  map. On a phone the same heading folds the panel away, see MapFilterPanel. */
               <MapFilterPanel
-                foldable={screenWidth < PHONE_BREAKPOINT}
+                foldable={canvasWidth < 1000}
                 title={t('map.groupMap')}
                 activeCount={activeFilterCount}
                 activeCountLabel={t('map.activeFilterCount', { count: activeFilterCount })}
@@ -775,7 +868,7 @@ export default function MapView() {
                 </div>
 
                 {/* Locked rather than hidden, for the same reason as the ring above. Unlike the
-                    distance ring, which recolours pins, this one hides them: a commute ceiling is
+                    distance ring, which outlines pins, this one hides them: a commute ceiling is
                     asked as "show me only what I could live with". */}
                 <div className="map-panel__row">
                   <Text size="small" className="map-panel__label">

@@ -6,6 +6,7 @@
 import { useLocale, useTranslation } from '../../services/i18n/i18n.jsx';
 import { formatDecimal } from '../../services/number/numberService.js';
 import './FitSummary.less';
+import { fitTone } from '../../services/listings/fitPresentation.js';
 
 /**
  * A saved assessment on a ten-point display scale. Stored scores remain percentages for sorting.
@@ -27,8 +28,7 @@ export default function FitSummary({ summary }) {
       </div>
     );
   const score = Math.round(Math.max(0, Math.min(100, summary.score))) / 10;
-  const tone =
-    summary.hardFailure || score < 5 ? 'low' : summary.stale || summary.hardUnknown || score < 8 ? 'medium' : 'high';
+  const tone = fitTone(summary);
   return (
     <div className="fitSummary" aria-label={t('search.fitTitle')}>
       <strong className={`fitSummary__score fitSummary__score--${tone}`}>

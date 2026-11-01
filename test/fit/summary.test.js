@@ -16,6 +16,7 @@ vi.mock('../../lib/services/storage/SqliteConnection.js', () => ({
 vi.mock('../../lib/services/storage/listingsStorage.js', () => ({
   queryListings: () => ({ result: ctx.rows, totalNumber: ctx.rows.length, page: 1 }),
   getAvailableProviders: () => [],
+  getListingsForMap: () => ({ listings: ctx.rows }),
   getListingById: (id) => ctx.rows.find((row) => row.id === id) ?? null,
 }));
 vi.mock('../../lib/services/storage/settingsStorage.js', () => ({ getUserSettings: () => ({}) }));
@@ -120,6 +121,26 @@ describe('private saved fit summaries', () => {
     });
     expect(attachFitSummaries([listing], 'alice')[0].fitSummary.stale).toBe(true);
   });
+  it('returns fresh current-user map summaries without private evidence or preference text', async () => {
+    const response = await app.inject('/api/listings/map?userId=bob');
+    expect(response.statusCode).toBe(200);
+    const rows = response.json().listings;
+    expect(rows[0].fitSummary).toMatchObject({ score: 80, stale: false });
+    expect(rows[1].fitSummary).toBeNull();
+    expect(rows[0]).not.toHaveProperty('description');
+    expect(JSON.stringify(rows)).not.toContain('Private portal source');
+    expect(JSON.stringify(rows)).not.toContain('Private preferences');
+    expect(JSON.stringify(rows)).not.toContain('Bob private requirement');
+  });
+  it.each(['description', 'charges', 'charges_included', 'energy_class'])(
+    'marks changed %s evidence stale on the map',
+    async (field) => {
+      ctx.rows[0][field] = field === 'charges' ? 100 : field === 'charges_included' ? true : 'changed';
+      const rows = (await app.inject('/api/listings/map')).json().listings;
+      expect(rows[0].fitSummary.stale).toBe(true);
+      expect(rows[0]).not.toHaveProperty(field);
+    },
+  );
   it('returns the same private summary from table and detail routes, ignoring a forged user id even for admins', async () => {
     const table = await app.inject({ method: 'GET', url: '/api/listings/table?userId=bob' });
     expect(table.statusCode).toBe(200);

@@ -42,7 +42,7 @@ import MapPopupActions from './components/MapPopupActions.jsx';
  * listing, with its id. That changes the popup's height, and it changes which listing the address
  * bar has to name.
  * @returns {{element: HTMLElement, transitMount: HTMLElement, activate: () => void, unmount: () => void,
- * currentId: () => string}} The popup content, the empty node the nearby stops are to be rendered
+ * currentId: () => string, showListing: (id: string) => void}} The popup content, the empty node the nearby stops are to be rendered
  * into, the mount and the teardown of the action bar, and which listing is on screen right now.
  */
 export function createListingPopupContent({
@@ -136,6 +136,13 @@ export function createListingPopupContent({
     unmount: () => unmountActions?.(),
     /** Which listing is on screen, for the caller to put in the address bar when it opens. */
     currentId: () => listings[index].id,
+    showListing: (id) => {
+      const next = listings.findIndex((listing) => listing.id === id);
+      if (next < 0 || next === index) return;
+      index = next;
+      render();
+      onPageChange?.(listings[index].id);
+    },
   };
 }
 

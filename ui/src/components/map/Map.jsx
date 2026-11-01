@@ -175,6 +175,7 @@ const GERMANY_CENTER = [10.4515, 51.1657];
  * @param {import('react').ReactNode|((controls: import('react').ReactNode, expandButton: import('react').ReactNode) => import('react').ReactNode)} [props.panels] -
  *   Extra boxes for the top right column, below the map's own controls. For view-specific filters
  *   that belong with the map. A function when `controlsInPanels` is set, see above.
+ * @param {import('react').ReactNode} [props.sidebar] - Optional results pane, retained in fullscreen.
  * @param {import('react').ReactNode} [props.children] - Freely positioned overlay UI, rendered
  *   inside the shell so it travels into the fullscreen overlay without a portal.
  */
@@ -206,6 +207,7 @@ export default function Map({
   onDrawingChange = null,
   panels = null,
   children = null,
+  sidebar = null,
 }) {
   const t = useTranslation();
   // Read here rather than passed in: departure boards are part of what the transit overlay *is*,
@@ -791,6 +793,7 @@ export default function Map({
 
   const shellClassName = [
     'map-shell',
+    sidebar ? 'map-shell--with-sidebar' : '',
     isExpanded ? 'map-shell--expanded' : '',
     pickMode ? 'map-shell--picking' : '',
     // Moves MapLibre's own top-left controls out from under the search box, see Map.less.
@@ -841,6 +844,7 @@ export default function Map({
         {typeof panels === 'function' ? panels(controlsNode, expandButton) : panels}
       </div>
 
+      {sidebar && <div className="map-shell__sidebar">{sidebar}</div>}
       {children}
     </div>
   );

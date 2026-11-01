@@ -32,3 +32,18 @@
     }
   }
 }
+
+.mapLegend__symbol {
+  font-weight: @weight-strong;
+  width: 12px;
+  text-align: center;
+  &--high { color: @color-success; }
+  &--medium { color: @color-warning; }
+  &--low { color: @color-error; }
+  &--mixed { color: @color-info; }
+  &--unassessed { color: @color-muted; }
+}
+.mapLegend__dot--inRing {
+  border: 2px solid @color-warning;
+  background: @color-surface;
+}

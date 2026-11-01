@@ -393,3 +393,128 @@
   border-radius: @radius-pill;
   height: 4px !important;
 }
+
+/* The sidebar belongs to the shell, so the same map/list pair survives fullscreen. The actual
+   MapLibre container excludes it: projection and result selection measure only visible map. */
+.map-view-container {
+  min-height: 580px;
+
+  .map-shell--with-sidebar {
+    --map-results-width: clamp(300px, 32%, 390px);
+
+    .map-container {
+      width: calc(100% - var(--map-results-width));
+      margin-left: var(--map-results-width);
+      box-sizing: border-box;
+    }
+    .map-shell__search { left: calc(var(--map-results-width) + 12px); }
+    .map-shell__sidebar {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: var(--map-results-width);
+      border-right: 1px solid @color-border;
+      box-sizing: border-box;
+      background: @color-base;
+    }
+    // The canvas is narrower than the window: keep filters below the search at medium widths.
+    .map-shell__ui { top: 56px; max-height: calc(100% - 68px); }
+  }
+
+  @media (max-width: 768px) {
+    min-height: 740px;
+
+    .map-shell--with-sidebar {
+      --map-results-height: 48%;
+      .map-container { width: 100%; height: 52%; margin-left: 0; }
+      .map-shell__search { left: 12px; }
+      .map-shell__sidebar {
+        inset: auto 0 0;
+        width: 100%;
+        height: var(--map-results-height);
+        border-right: 0;
+        border-top: 1px solid @color-border;
+      }
+      .map-shell__ui { max-height: calc(52% - 68px); }
+    }
+  }
+}
+
+.map-results {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  color: @color-text;
+
+  &__header {
+    padding: @space-5 @space-5 @space-3;
+    border-bottom: 1px solid @color-border;
+    flex: none;
+    h2 { margin: 0; font-size: @text-lg; font-weight: @weight-medium; }
+    p { margin: @space-1 0 0; color: @color-muted; font-size: @text-xs; }
+  }
+  &__scroll { overflow-y: auto; min-height: 0; overscroll-behavior: contain; padding: 0 @space-5; }
+  &__empty { color: @color-muted; padding: @space-8 0; }
+  &__card {
+    display: flex;
+    gap: @space-3;
+    padding: @space-5 0;
+    border-bottom: 1px solid @color-border;
+    &:hover, &:focus-within, &--selected { background: @color-hover; }
+  }
+  &__photoButton {
+    flex: none;
+    padding: 0;
+    border: 0;
+    background: none;
+    align-self: flex-start;
+    width: 96px;
+    height: 112px;
+    border-radius: @radius-card;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  &__photo { width: 100%; height: 100%; object-fit: cover; }
+  &__body { display: flex; flex-direction: column; align-items: flex-start; gap: @space-1; min-width: 0; }
+  &__price { font-size: @text-lg; }
+  &__title { color: @color-text; font-size: @text-sm; line-height: 1.4; overflow-wrap: anywhere; }
+  &__meta { color: @color-muted; font-size: @text-xs; }
+  &__locate {
+    padding: @space-1 0;
+    border: 0;
+    font: inherit;
+    font-size: @text-xs;
+    background: none;
+    color: @color-link;
+    cursor: pointer;
+    &:hover { text-decoration: underline; }
+  }
+  button:focus-visible, a:focus-visible { outline: 2px solid @color-info; outline-offset: 2px; }
+}
+
+.map-fit-pin {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 36px;
+  height: 32px;
+  padding: 0 @space-2;
+  border-radius: @radius-pill;
+  border: 2px solid currentColor;
+  background: @color-surface;
+  font-family: @font-ui;
+  font-size: @text-sm;
+  font-weight: @weight-strong;
+  box-shadow: @shadow-sm;
+  cursor: pointer;
+  &--high { color: @color-success; }
+  &--medium { color: @color-warning; }
+  &--low { color: @color-error; }
+  &--unassessed { color: @color-muted; border-style: dashed; }
+  &--mixed { color: @color-info; }
+  &--in-ring { outline: 3px solid @color-warning; outline-offset: 3px; }
+  &:hover, &:focus-visible, &--highlighted {
+    z-index: 2;
+    box-shadow: 0 0 0 3px @color-surface, 0 0 0 5px currentColor;
+  }
+}
