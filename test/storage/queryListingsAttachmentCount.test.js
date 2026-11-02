@@ -41,7 +41,7 @@ describe('queryListings attachment count against real SQLite', () => {
         shared_with_user TEXT DEFAULT '[]',
         deal_type TEXT
       );
-      CREATE TABLE listings (
+      CREATE TABLE listings ( location_source TEXT, search_state TEXT NOT NULL DEFAULT 'match', search_reason TEXT,
         id TEXT PRIMARY KEY,
         job_id TEXT,
         price REAL,
@@ -121,3 +121,8 @@ describe('queryListings attachment count against real SQLite', () => {
     expect(result.totalNumber).toBe(3);
   });
 });
+
+vi.mock('../../lib/services/storage/searchEligibilityStorage.js', () => ({
+  recheckSearchEligibility: vi.fn(),
+  matchingSearchListings: (rows) => rows,
+}));

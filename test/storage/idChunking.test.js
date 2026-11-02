@@ -22,7 +22,7 @@ describe('listing id batches larger than the SQLite parameter limit', () => {
   beforeEach(async () => {
     db = new Database(':memory:');
     db.exec(`
-      CREATE TABLE listings (
+      CREATE TABLE listings ( location_source TEXT, search_state TEXT NOT NULL DEFAULT 'match', search_reason TEXT,
         id TEXT PRIMARY KEY,
         hash TEXT,
         provider TEXT,
@@ -110,3 +110,8 @@ describe('listing id batches larger than the SQLite parameter limit', () => {
     expect(listingsStorage.restoreListingsById([])).toBeUndefined();
   });
 });
+
+vi.mock('../../lib/services/storage/searchEligibilityStorage.js', () => ({
+  recheckSearchEligibility: vi.fn(),
+  matchingSearchListings: (rows) => rows,
+}));

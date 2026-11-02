@@ -117,3 +117,8 @@ export const mockFredy = async () => {
     }
   };
 };
+
+vi.mock('../lib/services/storage/searchEligibilityStorage.js', () => ({
+  recheckSearchEligibility: vi.fn(),
+  matchingSearchListings: (rows) => rows,
+}));

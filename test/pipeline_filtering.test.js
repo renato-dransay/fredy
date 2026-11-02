@@ -185,7 +185,7 @@ describe('Issue reproduction: listings filtered by similarity or area should be 
       // Might throw NoNewListingsWarning if all are filtered out
     }
 
-    expect(mockStore.deletedIds).toContain('2');
+    expect(mockStore.deletedIds).not.toContain('2');
   });
 });
 

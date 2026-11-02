@@ -78,6 +78,16 @@ export default function ListingsFilterPanel({
       onClearAll={() => onChange(clearAllFilters())}
     >
       <FilterGroup title={t('listings.filterGroupShow')}>
+        <FilterHelp>{t('listings.searchEligibilityHelp')}</FilterHelp>
+        <RadioGroup
+          type="button"
+          value={values.search ?? 'match'}
+          onChange={(e) => onChange({ search: e.target.value, hidden: false, active: null, page: 1 })}
+        >
+          <Radio value="match">{t('listings.searchMatches')}</Radio>
+          <Radio value="review">{t('listings.locationReview')}</Radio>
+          <Radio value="excluded">{t('listings.searchExcluded')}</Radio>
+        </RadioGroup>
         <FilterHelp>{t('listings.filterActivityHelp')}</FilterHelp>
         <RadioGroup
           type="button"

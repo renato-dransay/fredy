@@ -42,7 +42,7 @@ describe('queryListings travel time filter against real SQLite', () => {
         shared_with_user TEXT DEFAULT '[]',
         deal_type TEXT
       );
-      CREATE TABLE listings (
+      CREATE TABLE listings ( location_source TEXT, search_state TEXT NOT NULL DEFAULT 'match', search_reason TEXT,
         id TEXT PRIMARY KEY,
         job_id TEXT,
         price REAL,
@@ -277,7 +277,7 @@ describe('how far through the travel-time backlog a user is', () => {
     db = new Database(':memory:');
     db.exec(`
       CREATE TABLE jobs (id TEXT PRIMARY KEY, user_id TEXT);
-      CREATE TABLE listings (
+      CREATE TABLE listings ( location_source TEXT, search_state TEXT NOT NULL DEFAULT 'match', search_reason TEXT,
         id TEXT PRIMARY KEY,
         job_id TEXT,
         is_active INTEGER,
@@ -289,7 +289,9 @@ describe('how far through the travel-time backlog a user is', () => {
     `);
     db.prepare('INSERT INTO jobs VALUES (?, ?)').run('j1', USER);
     db.prepare('INSERT INTO jobs VALUES (?, ?)').run('j2', 'someone-else');
-    const add = db.prepare('INSERT INTO listings VALUES (?, ?, ?, ?, ?, ?, ?)');
+    const add = db.prepare(
+      'INSERT INTO listings (id,job_id,is_active,manually_deleted,latitude,longitude,travel_times_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    );
     add.run('done', 'j1', 1, 0, 52.5, 13.4, 1700000000);
     add.run('waiting', 'j1', 1, 0, 52.5, 13.4, null);
     add.run('also-waiting', 'j1', 1, 0, 52.5, 13.4, null);
@@ -315,3 +317,8 @@ describe('how far through the travel-time backlog a user is', () => {
     expect(listingsStorage.getTravelTimeProgress('nobody')).toEqual({ measured: 0, total: 0 });
   });
 });
+
+vi.mock('../../lib/services/storage/searchEligibilityStorage.js', () => ({
+  recheckSearchEligibility: vi.fn(),
+  matchingSearchListings: (rows) => rows,
+}));

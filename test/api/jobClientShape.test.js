@@ -33,3 +33,8 @@ describe('toClientJob', () => {
     expect(toClientJob({ id: 'j2' }).notificationAdapter).toEqual([]);
   });
 });
+
+vi.mock('../../lib/services/storage/searchEligibilityStorage.js', () => ({
+  recheckSearchEligibility: vi.fn(),
+  matchingSearchListings: (rows) => rows,
+}));

@@ -76,7 +76,7 @@ describe('POST /api/jobs channel authorisation', () => {
         created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
       );
       -- jobStorage.getJob()'s SELECT correlates a listing count against this table.
-      CREATE TABLE listings (
+      CREATE TABLE listings ( location_source TEXT, search_state TEXT NOT NULL DEFAULT 'match', search_reason TEXT,
         job_id TEXT, is_active INTEGER, manually_deleted INTEGER
       );
     `);
@@ -258,3 +258,8 @@ describe('POST /api/jobs channel authorisation', () => {
     expect(soleJobRow().name).not.toBe('Renamed');
   });
 });
+
+vi.mock('../../lib/services/storage/searchEligibilityStorage.js', () => ({
+  recheckSearchEligibility: vi.fn(),
+  matchingSearchListings: (rows) => rows,
+}));

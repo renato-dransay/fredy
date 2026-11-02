@@ -20,7 +20,7 @@ describe('listing media storage', () => {
     db = new Database(':memory:');
     db.pragma('foreign_keys = ON');
     db.exec(`
-      CREATE TABLE listings (
+      CREATE TABLE listings ( location_source TEXT, search_state TEXT NOT NULL DEFAULT 'match', search_reason TEXT,
         id TEXT PRIMARY KEY,
         hash TEXT,
         provider TEXT,
@@ -253,3 +253,8 @@ describe('listing media storage', () => {
     });
   });
 });
+
+vi.mock('../../lib/services/storage/searchEligibilityStorage.js', () => ({
+  recheckSearchEligibility: vi.fn(),
+  matchingSearchListings: (rows) => rows,
+}));

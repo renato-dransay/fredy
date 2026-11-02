@@ -28,7 +28,7 @@ describe('price history storage', () => {
     db = new Database(':memory:');
     db.pragma('foreign_keys = ON');
     db.exec(`
-      CREATE TABLE listings (
+      CREATE TABLE listings ( location_source TEXT, search_state TEXT NOT NULL DEFAULT 'match', search_reason TEXT,
         id TEXT PRIMARY KEY,
         job_id TEXT,
         provider TEXT,
@@ -211,3 +211,8 @@ describe('price history storage', () => {
     expect(storage.getPriceHistory('a')).toEqual([]);
   });
 });
+
+vi.mock('../../lib/services/storage/searchEligibilityStorage.js', () => ({
+  recheckSearchEligibility: vi.fn(),
+  matchingSearchListings: (rows) => rows,
+}));

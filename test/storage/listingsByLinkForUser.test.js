@@ -21,7 +21,7 @@ describe('getListingsByLinkForUser', () => {
     db = new Database(':memory:');
     db.exec(`
       CREATE TABLE jobs (id TEXT PRIMARY KEY, user_id TEXT, name TEXT, shared_with_user TEXT DEFAULT '[]');
-      CREATE TABLE listings (
+      CREATE TABLE listings ( location_source TEXT, search_state TEXT NOT NULL DEFAULT 'match', search_reason TEXT,
         id TEXT PRIMARY KEY, job_id TEXT, provider TEXT, link TEXT,
         manually_deleted INTEGER DEFAULT 0, created_at INTEGER
       );
@@ -89,3 +89,8 @@ describe('getListingsByLinkForUser', () => {
     expect(ids()).toEqual([]);
   });
 });
+
+vi.mock('../../lib/services/storage/searchEligibilityStorage.js', () => ({
+  recheckSearchEligibility: vi.fn(),
+  matchingSearchListings: (rows) => rows,
+}));

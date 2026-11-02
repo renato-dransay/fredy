@@ -123,6 +123,17 @@ describe('map listing fit controls', () => {
     const tied = ['b', 'a', 'c'].map((id) => ({ id, fitSummary: assessed(80), created_at: id === 'c' ? 2 : 1 }));
     expect(ids(sortByFit(tied, 'desc'))).toEqual(['c', 'a', 'b']);
   });
+  it('keeps failures in a separate ranked group, without treating unknown must-haves as failures', () => {
+    const candidates = [
+      { id: 'failed-high', fitSummary: { score: 95, hardFailure: true } },
+      { id: 'unknown', fitSummary: { score: 30, hardUnknown: true } },
+      { id: 'failed-low', fitSummary: { score: 50, hardFailure: true } },
+      { id: 'none' },
+    ];
+    expect(ids(sortByFit(candidates, 'desc'))).toEqual(['unknown', 'failed-high', 'failed-low', 'none']);
+    expect(ids(sortByFit(candidates, 'asc'))).toEqual(['unknown', 'failed-low', 'failed-high', 'none']);
+    expect(candidates[0].fitSummary.score).toBe(95);
+  });
 });
 
 describe('minimum fit URL codec', () => {

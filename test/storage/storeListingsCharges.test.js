@@ -17,7 +17,7 @@ describe('storeListings, the basis of a rent', () => {
   beforeEach(async () => {
     db = new Database(':memory:');
     db.exec(`
-      CREATE TABLE listings (
+      CREATE TABLE listings ( location_source TEXT, search_state TEXT NOT NULL DEFAULT 'match', search_reason TEXT,
         id TEXT PRIMARY KEY,
         hash TEXT,
         provider TEXT,
@@ -100,3 +100,8 @@ describe('storeListings, the basis of a rent', () => {
     ]);
   });
 });
+
+vi.mock('../../lib/services/storage/searchEligibilityStorage.js', () => ({
+  recheckSearchEligibility: vi.fn(),
+  matchingSearchListings: (rows) => rows,
+}));

@@ -41,6 +41,7 @@ export const NEUTRAL = {
   mtech: null,
   mop: null,
   hidden: false,
+  search: 'match',
 };
 
 /**
@@ -55,6 +56,7 @@ export const NEUTRAL = {
  */
 export const FILTER_KEYS = [
   'hidden',
+  'search',
   'active',
   'watch',
   'status',
@@ -210,6 +212,7 @@ export function toListingsQuery(values) {
       // it out of the request keeps the query string honest about what is being asked.
       connectivityMobileOperator: values.mtech == null ? null : values[MOBILE_OPERATOR_KEY],
       hiddenOnly: isHiddenView ? true : undefined,
+      searchState: values.search ?? 'match',
     },
   };
 }
@@ -228,6 +231,7 @@ export function describeActiveFilters(values, { t, jobs = [], providers = [] }) 
   const named = (list, id) => list.find((entry) => entry.id === id)?.name ?? id;
 
   const labels = {
+    search: () => t(values.search === 'review' ? 'listings.locationReview' : 'listings.searchExcluded'),
     hidden: () => t('listings.filterHidden'),
     active: () => (values.active === true ? t('listings.filterActive') : t('listings.filterInactive')),
     watch: () => (values.watch === true ? t('listings.filterWatched') : t('listings.filterUnwatched')),

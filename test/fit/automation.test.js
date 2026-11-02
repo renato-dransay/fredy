@@ -118,7 +118,7 @@ beforeEach(() => {
   ctx.db.exec(`PRAGMA foreign_keys=ON;
     CREATE TABLE users(id TEXT PRIMARY KEY);
     INSERT INTO users VALUES('alice'),('bob');
-    CREATE TABLE listings(id TEXT PRIMARY KEY,job_id TEXT,provider TEXT,created_at INTEGER,
+    CREATE TABLE listings( location_source TEXT, search_state TEXT NOT NULL DEFAULT 'match', search_reason TEXT, id TEXT PRIMARY KEY,job_id TEXT,provider TEXT,created_at INTEGER,
       is_active INTEGER,manually_deleted INTEGER,title TEXT,description TEXT,size REAL);`);
   up(ctx.db);
   addInstructions(ctx.db);
@@ -408,3 +408,8 @@ describe('automatic fit API ownership and consent', () => {
     expect(evaluateFit).not.toHaveBeenCalled();
   });
 });
+
+vi.mock('../../lib/services/storage/searchEligibilityStorage.js', () => ({
+  recheckSearchEligibility: vi.fn(),
+  matchingSearchListings: (rows) => rows,
+}));

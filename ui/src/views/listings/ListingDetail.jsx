@@ -527,6 +527,17 @@ export default function ListingDetail() {
         </div>
       )}
 
+      {listing.search_state === 'review' && <Banner type="warning" description={t('listings.searchEligibilityHelp')} />}
+      {listing.search_state === 'excluded' && (
+        <Banner
+          type="warning"
+          description={
+            t('listings.searchExcluded') +
+            ': ' +
+            t(listing.search_reason === 'swap' ? 'listings.reasonSwap' : 'listings.reasonOutside')
+          }
+        />
+      )}
       <ListingTitleBlock
         listing={listing}
         wide={wide}

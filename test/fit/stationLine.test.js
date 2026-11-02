@@ -13,56 +13,87 @@ const criterion = { line: 'U2', maxWalkMinutes: 10 };
 const listing = { latitude: 52.5, longitude: 13.4 };
 const station = { type: 'node', id: 123, lat: 52.501, lon: 13.401, tags: { railway: 'station', name: 'U2 station' } };
 const response = (elements, extra = {}) => new Response(JSON.stringify({ elements, ...extra }));
-const subwayRoute = {
-  type: 'relation',
-  id: 500,
-  tags: { type: 'route', route: 'subway', ref: 'U8' },
-  members: [{ type: 'node', ref: station.id, role: 'stop' }],
-};
+vi.mock('../../lib/services/storage/settingsStorage.js', () => ({
+  getSettings: async () => ({ overpassBaseUrl: 'https://overpass.example/api/interpreter/' }),
+}));
 beforeEach(clearStationLineCache);
 
 describe('rail-line-aware walking fit', () => {
-  it('verifies any-line subway membership and a real walk without accepting a nearby S-Bahn or light rail', async () => {
-    const suburban = { ...station, id: 124, tags: { railway: 'station', name: 'S-Bahn' } };
-    const lightRail = { ...station, id: 125, tags: { railway: 'station', name: 'Light rail' } };
-    const request = vi.fn(async () =>
-      response([
-        subwayRoute,
-        station,
-        suburban,
-        lightRail,
-        {
-          ...subwayRoute,
-          id: 501,
-          tags: { type: 'route', route: 'train', ref: 'S1' },
-          members: [{ type: 'node', ref: suburban.id }],
-        },
-        {
-          ...subwayRoute,
-          id: 502,
-          tags: { type: 'route', route: 'light_rail', ref: 'M4' },
-          members: [{ type: 'node', ref: lightRail.id }],
-        },
-      ]),
-    );
+  it('uses explicit subway stops and real walking routes without the unavailable Overpass dependency', async () => {
+    const subwayStops = vi.fn(async () => ({
+      stations: [{ name: 'U-Bahn', lat: station.lat, lng: station.lon, stopId: 'subway-1' }],
+      complete: true,
+    }));
+    const request = vi.fn();
     const route = vi.fn(async () => ({ answered: true, route: { minutes: 8 } }));
-    const result = await evaluateStationLine({ line: '*', maxWalkMinutes: 10 }, listing, { request, route });
-    expect(result).toMatchObject({ verdict: 'met', confidence: 1 });
-    expect(route).toHaveBeenCalledTimes(1);
-    const query = new URLSearchParams(request.mock.calls[0][1].body).get('data');
-    expect(query).toContain('[route="subway"]');
-    expect(query).not.toContain('light_rail');
-    expect(query).not.toContain('[ref="*"]');
-    expect(result.evidence[0].text).toContain('U-Bahn');
-  });
-  it('keeps an any-line lookup unknown when there is no verified subway membership', async () => {
-    const route = vi.fn();
     const result = await evaluateStationLine({ line: '*', maxWalkMinutes: 10 }, listing, {
-      request: async () => response([station, { ...subwayRoute, tags: { type: 'route', route: 'train', ref: 'S1' } }]),
+      subwayStops,
+      request,
       route,
     });
-    expect(result.verdict).toBe('unknown');
-    expect(route).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ verdict: 'met', confidence: 1 });
+    expect(route).toHaveBeenCalledTimes(1);
+    expect(request).not.toHaveBeenCalled();
+    expect(result.evidence[0].text).toContain('Transitous SUBWAY stop subway-1');
+  });
+  it('keeps a missing or failed subway lookup unknown', async () => {
+    for (const answer of [null, { stations: [], complete: true }]) {
+      clearStationLineCache();
+      const matrix = vi.fn();
+      const result = await evaluateStationLine({ line: '*', maxWalkMinutes: 10 }, listing, {
+        subwayStops: async () => answer,
+        matrix,
+      });
+      expect(result.verdict).toBe('unknown');
+      expect(matrix).not.toHaveBeenCalled();
+    }
+  });
+  it('routes all candidates together, including a match beyond the first three', async () => {
+    const stations = Array.from({ length: 4 }, (_, i) => ({
+      name: `U${i}`,
+      lat: station.lat,
+      lng: station.lon,
+      stopId: `stop-${i}`,
+    }));
+    const matrix = vi.fn(async () => [900, 1000, 700, 480].map((seconds) => ({ seconds })));
+    const result = await evaluateStationLine({ line: '*', maxWalkMinutes: 10 }, listing, {
+      subwayStops: async () => ({ stations, complete: true }),
+      matrix,
+    });
+    expect(result.verdict).toBe('met');
+    expect(result.evidence[0].source).toBe('station:stop-3');
+    expect(matrix).toHaveBeenCalledTimes(1);
+    expect(matrix.mock.calls[0][0].destinations).toHaveLength(4);
+  });
+  it.each([
+    [600, 'met'],
+    [601, 'unmet'],
+    [null, 'unknown'],
+  ])('compares exact walking seconds %s at the cutoff', async (seconds, verdict) => {
+    const result = await evaluateStationLine({ line: '*', maxWalkMinutes: 10 }, listing, {
+      subwayStops: async () => ({
+        stations: [{ name: 'U', lat: station.lat, lng: station.lon, stopId: 'subway' }],
+        complete: true,
+      }),
+      matrix: async () => [{ seconds }],
+    });
+    expect(result.verdict).toBe(verdict);
+  });
+  it('does not declare failure from an incomplete matrix or station coverage', async () => {
+    for (const [complete, durations] of [
+      [true, []],
+      [false, [{ seconds: 700 }]],
+    ]) {
+      clearStationLineCache();
+      const result = await evaluateStationLine({ line: '*', maxWalkMinutes: 10 }, listing, {
+        subwayStops: async () => ({
+          stations: [{ name: 'U', lat: station.lat, lng: station.lon, stopId: 'subway' }],
+          complete,
+        }),
+        matrix: async () => durations,
+      });
+      expect(result.verdict).toBe('unknown');
+    }
   });
   it('requires line membership in the query and an actual walking route', async () => {
     const request = vi.fn(async () => response([station]));
@@ -72,6 +103,7 @@ describe('rail-line-aware walking fit', () => {
     expect(result.evidence[0].text).toContain('8 minutes walking');
     const query = new URLSearchParams(request.mock.calls[0][1].body).get('data');
     expect(query).toContain('[ref="U2"]');
+    expect(request.mock.calls[0][0]).toBe('https://overpass.example/api/interpreter');
     expect(query).toContain('node(r)');
     expect(route.mock.calls[0][0]).toMatchObject({ mode: 'WALK', toLat: station.lat });
   });
@@ -131,4 +163,66 @@ describe('rail-line-aware walking fit', () => {
     expect(request).toHaveBeenCalledTimes(1);
     expect(route).toHaveBeenCalledTimes(1);
   });
+});
+
+it('does not certify walking time from an approximate neighborhood position', async () => {
+  const subwayStops = vi.fn();
+  const result = await evaluateStationLine(
+    { line: '*', maxWalkMinutes: 10 },
+    { latitude: 52.5, longitude: 13.4, location_source: 'approximate' },
+    { subwayStops },
+  );
+  expect(result.verdict).toBe('unknown');
+  expect(result.evidence[0].text).toContain('approximate');
+  expect(subwayStops).not.toHaveBeenCalled();
+});
+
+it('checks platforms beyond the first batch before declaring a complete verdict', async () => {
+  const stations = Array.from({ length: 60 }, (_, i) => ({ name: `U${i}`, lat: 52.501, lng: 13.401, stopId: `${i}` }));
+  const matrix = vi.fn(async ({ destinations }) => destinations.map(() => ({ seconds: 900 })));
+  const result = await evaluateStationLine({ line: '*', maxWalkMinutes: 10 }, listing, {
+    subwayStops: async () => ({ stations, complete: true }),
+    matrix,
+  });
+  expect(result.verdict).toBe('unmet');
+  expect(matrix.mock.calls.map(([args]) => args.destinations.length)).toEqual([50, 10]);
+  expect(result.evidence).toHaveLength(60);
+});
+it('expands an empty complete local search and uses actual walks to outer-district subway stops', async () => {
+  const subwayStops = vi
+    .fn()
+    .mockResolvedValueOnce({ stations: [], complete: true })
+    .mockResolvedValueOnce({ stations: [{ name: 'Distant U', lat: 52.52, lng: 13.4, stopId: 'far' }], complete: true });
+  const result = await evaluateStationLine({ line: '*', maxWalkMinutes: 10 }, listing, {
+    subwayStops,
+    matrix: async () => [{ seconds: 3000 }],
+  });
+  expect(subwayStops.mock.calls.map(([args]) => args.radiusMeters)).toEqual([1800, 3000]);
+  expect(result.verdict).toBe('unmet');
+  expect(result.evidence.some((e) => e.text.includes('50 minutes walking'))).toBe(true);
+});
+
+it('keeps incomplete inner coverage unknown even when distant routes exceed the limit', async () => {
+  const subwayStops = vi.fn(async () => ({ stations: [], complete: false }));
+  const result = await evaluateStationLine({ line: '*', maxWalkMinutes: 10 }, listing, { subwayStops });
+  expect(result.verdict).toBe('unknown');
+  expect(subwayStops).toHaveBeenCalledTimes(1);
+});
+it('does not let an unavailable distant platform hide complete local absence evidence', async () => {
+  const subwayStops = vi
+    .fn()
+    .mockResolvedValueOnce({ stations: [], complete: true })
+    .mockResolvedValueOnce({
+      stations: [
+        { name: 'Far U', lat: 52.52, lng: 13.4, stopId: 'far' },
+        { name: 'Other platform', lat: 52.52, lng: 13.4, stopId: 'other' },
+      ],
+      complete: true,
+    });
+  const result = await evaluateStationLine({ line: '*', maxWalkMinutes: 10 }, listing, {
+    subwayStops,
+    matrix: async () => [{ seconds: 1800 }, { seconds: null }],
+  });
+  expect(result.verdict).toBe('unmet');
+  expect(result.evidence[0].text).toContain('complete local subway lookup');
 });

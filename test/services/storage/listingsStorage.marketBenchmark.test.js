@@ -31,7 +31,7 @@ describe('market benchmark against the listings table', () => {
         id TEXT PRIMARY KEY,
         deal_type TEXT
       );
-      CREATE TABLE listings (
+      CREATE TABLE listings ( location_source TEXT, search_state TEXT NOT NULL DEFAULT 'match', search_reason TEXT,
         id TEXT PRIMARY KEY,
         job_id TEXT,
         price INTEGER,
@@ -185,3 +185,8 @@ describe('market benchmark against the listings table', () => {
     expect(listingsStorage.getListingsKpisForJobIds([]).medianPricePerSqm).toBeNull();
   });
 });
+
+vi.mock('../../../lib/services/storage/searchEligibilityStorage.js', () => ({
+  recheckSearchEligibility: vi.fn(),
+  matchingSearchListings: (rows) => rows,
+}));

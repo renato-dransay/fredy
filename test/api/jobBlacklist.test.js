@@ -68,7 +68,7 @@ describe('POST /api/jobs/:jobId/blacklist', () => {
         visibility TEXT,
         fields TEXT
       );
-      CREATE TABLE listings (
+      CREATE TABLE listings ( location_source TEXT, search_state TEXT NOT NULL DEFAULT 'match', search_reason TEXT,
         id TEXT PRIMARY KEY,
         job_id TEXT,
         is_active INTEGER DEFAULT 1,
@@ -169,3 +169,8 @@ describe('POST /api/jobs/:jobId/blacklist', () => {
     expect(body.added).toEqual(['AdminAdded']);
   });
 });
+
+vi.mock('../../lib/services/storage/searchEligibilityStorage.js', () => ({
+  recheckSearchEligibility: vi.fn(),
+  matchingSearchListings: (rows) => rows,
+}));

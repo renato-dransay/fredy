@@ -46,7 +46,7 @@ describe('job routes and the onboarding tour', () => {
         fields TEXT NOT NULL DEFAULT '{}', visibility TEXT NOT NULL DEFAULT 'private',
         created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
       );
-      CREATE TABLE listings (job_id TEXT, is_active INTEGER, manually_deleted INTEGER);
+      CREATE TABLE listings ( location_source TEXT, search_state TEXT NOT NULL DEFAULT 'match', search_reason TEXT, job_id TEXT, is_active INTEGER, manually_deleted INTEGER);
     `);
     const plugin = (await import('../../lib/api/routes/jobRouter.js')).default;
     app = Fastify();
@@ -80,3 +80,8 @@ describe('job routes and the onboarding tour', () => {
     expect(response.statusCode).toBe(409);
   });
 });
+
+vi.mock('../../lib/services/storage/searchEligibilityStorage.js', () => ({
+  recheckSearchEligibility: vi.fn(),
+  matchingSearchListings: (rows) => rows,
+}));

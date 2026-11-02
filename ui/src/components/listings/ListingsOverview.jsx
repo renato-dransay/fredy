@@ -75,6 +75,7 @@ const LISTINGS_URL_STATE = {
   mtech: { defaultValue: null, codec: parseString },
   mop: { defaultValue: null, codec: parseString },
   hidden: { defaultValue: false, codec: parseNullableBoolean },
+  search: { defaultValue: 'match', codec: parseString },
 };
 
 /**
@@ -518,6 +519,16 @@ const ListingsOverview = ({ onAddListing } = {}) => {
         </Empty>
       )}
 
+      <div className="listingsOverview__quickFilters">
+        <Button
+          type={values.search === 'review' ? 'primary' : 'tertiary'}
+          onClick={() =>
+            setValues({ search: values.search === 'review' ? 'match' : 'review', active: null, hidden: false, page: 1 })
+          }
+        >
+          {t(values.search === 'review' ? 'listings.searchMatches' : 'listings.locationReview')}
+        </Button>
+      </div>
       {viewMode === 'grid' ? (
         <ListingsGrid
           listings={listings}

@@ -211,3 +211,8 @@ describe('services/listings/priceHistoryService', () => {
     });
   });
 });
+
+vi.mock('../../../lib/services/storage/searchEligibilityStorage.js', () => ({
+  recheckSearchEligibility: vi.fn(),
+  matchingSearchListings: (rows) => rows,
+}));

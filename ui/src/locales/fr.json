@@ -1815,5 +1815,12 @@
   "search.icon.lease": "Lease",
   "search.icon.furniture": "Furnishing",
   "search.icon.requirement": "Requirement",
-  "map.results.showAll": "Show all {{count}} matches"
+  "map.results.showAll": "Show all {{count}} matches",
+  "listings.searchMatches": "Search matches",
+  "listings.locationReview": "Location review",
+  "listings.searchExcluded": "Excluded by search",
+  "listings.searchEligibilityHelp": "The saved area applies to every source. Unverified locations need review; swap offers and confirmed outside locations are excluded.",
+  "listings.reasonSwap": "Swap offer",
+  "listings.reasonOutside": "Outside the saved area",
+  "listings.confirmLocationOnMap": "This address is only approximate. Place the pin on the exact location."
 }

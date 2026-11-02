@@ -133,13 +133,22 @@ describe('fit scoring and provenance', () => {
       summarizeFit([requirement({ verdict: 'met' }), requirement({ id: 'b', verdict: 'unknown', weight: 3 })]),
     ).toEqual({ score: 40, coverage: 40, hardFailure: false, hardUnknown: true });
   });
-  it('a low-weight hard failure cannot be hidden by a high score', () => {
+  it('retains the weighted score and flags a must-have failure independently', () => {
     const result = summarizeFit([
       requirement({ verdict: 'met', weight: 10 }),
       requirement({ verdict: 'unmet', weight: 1 }),
     ]);
     expect(result.score).toBe(91);
     expect(result.hardFailure).toBe(true);
+  });
+  it('keeps optional furnishing failures as preferences, but mandatory furnishing failures disqualify', () => {
+    const criteria = [
+      requirement({ id: 'kitchen', verdict: 'met', weight: 10 }),
+      requirement({ id: 'unfurnished', verdict: 'unmet', required: false, weight: 2 }),
+    ];
+    expect(summarizeFit(criteria)).toMatchObject({ score: 83, hardFailure: false, coverage: 100 });
+    criteria[1].required = true;
+    expect(summarizeFit(criteria)).toMatchObject({ score: 83, hardFailure: true, coverage: 100 });
   });
   it('missing numerical fields do not silently pass', () => {
     expect(evaluateNumeric(requirement({ kind: 'min_rooms', value: 3 }), {}).verdict).toBe('unknown');

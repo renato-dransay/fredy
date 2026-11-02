@@ -85,9 +85,20 @@ export default function AddressEditor({ isManual = false, onSave, onPickOnMap })
         return;
       }
 
+      if (!['geocoded_house', 'portal', 'manual'].includes(coords.locationSource)) {
+        setStatus('imprecise');
+        return;
+      }
       setStatus('saving');
       try {
-        await onSave({ address, latitude: coords.lat, longitude: coords.lng });
+        await onSave({
+          address,
+          latitude: coords.lat,
+          longitude: coords.lng,
+          locationSource: ['geocoded_house', 'portal', 'manual'].includes(coords.locationSource)
+            ? 'manual'
+            : 'approximate',
+        });
         setVisible(false);
         reset();
       } catch {
@@ -129,10 +140,10 @@ export default function AddressEditor({ isManual = false, onSave, onPickOnMap })
         style={{ width: '100%' }}
       />
 
-      {status === 'notFound' && (
+      {['notFound', 'imprecise'].includes(status) && (
         <div className="addressEditor__notFound">
           <Typography.Text type="warning" size="small">
-            {t('listing.detail.addressNotFound')}
+            {t(status === 'imprecise' ? 'listings.confirmLocationOnMap' : 'listing.detail.addressNotFound')}
           </Typography.Text>
           <Button
             block

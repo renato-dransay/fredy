@@ -20,7 +20,7 @@ describe('storeListings id propagation', () => {
   beforeEach(async () => {
     db = new Database(':memory:');
     db.exec(`
-      CREATE TABLE listings (
+      CREATE TABLE listings ( location_source TEXT, search_state TEXT NOT NULL DEFAULT 'match', search_reason TEXT,
         id TEXT PRIMARY KEY,
         hash TEXT,
         provider TEXT,
@@ -86,14 +86,14 @@ describe('storeListings id propagation', () => {
 
   it('gives a freshly inserted listing the id of its row', () => {
     const listings = [listing('hash-1')];
-    listingsStorage.storeListings('job-1', 'immowelt', listings);
+    expect(listingsStorage.storeListings('job-1', 'immowelt', listings)).toBe(1);
 
     expect(rowExists(listings[0].id)).toBe(true);
   });
 
   it('points a duplicate inside one batch at the row that was actually written', () => {
     const listings = [listing('same-hash'), listing('same-hash')];
-    listingsStorage.storeListings('job-1', 'immowelt', listings);
+    expect(listingsStorage.storeListings('job-1', 'immowelt', listings)).toBe(1);
 
     expect(db.prepare('SELECT COUNT(*) AS c FROM listings').get().c).toBe(1);
     // Both entries must address the one existing row, not a phantom id.
@@ -108,7 +108,7 @@ describe('storeListings id propagation', () => {
     const storedId = first[0].id;
 
     const second = [listing('shared-hash')];
-    listingsStorage.storeListings('job-1', 'immoscout', second);
+    expect(listingsStorage.storeListings('job-1', 'immoscout', second)).toBe(0);
 
     expect(db.prepare('SELECT COUNT(*) AS c FROM listings').get().c).toBe(1);
     expect(second[0].id).toBe(storedId);
@@ -158,3 +158,8 @@ describe('storeListings id propagation', () => {
     expect(db.prepare('SELECT address FROM listings').get().address).toBe('Hauptstrasse 1');
   });
 });
+
+vi.mock('../../lib/services/storage/searchEligibilityStorage.js', () => ({
+  recheckSearchEligibility: vi.fn(),
+  matchingSearchListings: (rows) => rows,
+}));

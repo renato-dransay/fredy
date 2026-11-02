@@ -78,7 +78,7 @@ describe('listingsStorage.deleteListingsByFilter', () => {
     evicted.length = 0;
     db = new Database(':memory:');
     db.exec(`
-      CREATE TABLE listings (
+      CREATE TABLE listings ( location_source TEXT, search_state TEXT NOT NULL DEFAULT 'match', search_reason TEXT,
         id                    TEXT PRIMARY KEY,
         job_id                TEXT,
         provider              TEXT,
@@ -220,3 +220,8 @@ describe('listingsStorage.deleteListingsByFilter', () => {
     expect(remainingIds()).toEqual(['untouched']);
   });
 });
+
+vi.mock('../../../lib/services/storage/searchEligibilityStorage.js', () => ({
+  recheckSearchEligibility: vi.fn(),
+  matchingSearchListings: (rows) => rows,
+}));

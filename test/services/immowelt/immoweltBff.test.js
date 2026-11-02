@@ -136,21 +136,49 @@ describe('#immowelt bff transport', () => {
       return batch > 2 ? { status: 403, body: 'blocked' } : { status: 200, body: listResponse(url) };
     });
 
-    expect(await searchClassifieds(browser, SEARCH_REQUEST, DE)).toHaveLength(60);
+    const rows = await searchClassifieds(browser, SEARCH_REQUEST, DE);
+    expect(rows).toHaveLength(60);
+    expect(rows.ingestionIncomplete).toBe(true);
+    expect(rows.ingestionHttpStatus).toBe(403);
   });
 
   it('gives up when the search itself is refused', async () => {
     const browser = fakeBrowser(() => ({ status: 403, body: 'blocked' }));
 
-    expect(await searchClassifieds(browser, SEARCH_REQUEST, DE)).toEqual([]);
+    const rows = await searchClassifieds(browser, SEARCH_REQUEST, DE);
+    expect(rows).toEqual([]);
+    expect(rows.ingestionIncomplete).toBe(true);
+    expect(rows.ingestionHttpStatus).toBe(403);
     expect(requests.filter((url) => url.startsWith('/classifiedList/'))).toHaveLength(0);
   });
 
   it('does not ask for card payloads when the search found nothing', async () => {
     const browser = fakeBrowser(() => ({ status: 200, body: searchResponse(0) }));
 
-    expect(await searchClassifieds(browser, SEARCH_REQUEST, DE)).toEqual([]);
+    const rows = await searchClassifieds(browser, SEARCH_REQUEST, DE);
+    expect(rows).toEqual([]);
+    expect(rows.ingestionIncomplete).toBeUndefined();
     expect(requests).toHaveLength(1);
+  });
+
+  it('keeps earlier cards and reports an incomplete run when a later batch loses its connection', async () => {
+    let batch = 0;
+    const browser = fakeBrowser((url) => {
+      if (url.startsWith('/serp-bff/search')) return { status: 200, body: searchResponse(65) };
+      if (++batch > 1) throw new Error('Connection lost');
+      return { status: 200, body: listResponse(url) };
+    });
+    const rows = await searchClassifieds(browser, SEARCH_REQUEST, DE);
+    expect(rows).toHaveLength(30);
+    expect(rows.ingestionIncomplete).toBe(true);
+    expect(JSON.parse(JSON.stringify(rows))).toHaveLength(30);
+  });
+
+  it('reports malformed successful search responses as incomplete instead of healthy empty results', async () => {
+    const browser = fakeBrowser(() => ({ status: 200, body: '{}' }));
+    const rows = await searchClassifieds(browser, SEARCH_REQUEST, DE);
+    expect(rows).toEqual([]);
+    expect(rows.ingestionIncomplete).toBe(true);
   });
 
   it('warms the session once and reuses it for the exposé', async () => {

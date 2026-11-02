@@ -23,6 +23,8 @@ import listingsPlugin from '../../lib/api/routes/listingsRouter.js';
 let app;
 const listing = {
   id: 'one',
+  created_at: 1000,
+  published_at: 500,
   title: 'Flat',
   description: 'Source description',
   price: 1500,
@@ -42,9 +44,9 @@ beforeEach(async () => {
   ctx.db = new Database(':memory:');
   ctx.db.exec(`CREATE TABLE users(id TEXT PRIMARY KEY);
     CREATE TABLE jobs(id TEXT PRIMARY KEY, user_id TEXT, shared_with_user TEXT, name TEXT, deal_type TEXT);
-    CREATE TABLE listings(id TEXT PRIMARY KEY,job_id TEXT,title TEXT,description TEXT,price REAL,size REAL,rooms REAL,
+    CREATE TABLE listings( location_source TEXT, search_state TEXT NOT NULL DEFAULT 'match', search_reason TEXT, id TEXT PRIMARY KEY,job_id TEXT,title TEXT,description TEXT,price REAL,size REAL,rooms REAL,
       address TEXT,link TEXT,provider TEXT,latitude REAL,longitude REAL,image_url TEXT,charges REAL,charges_included INTEGER,
-      energy_class TEXT,is_active INTEGER DEFAULT 1,manually_deleted INTEGER DEFAULT 0);
+      energy_class TEXT,created_at INTEGER,published_at INTEGER,is_active INTEGER DEFAULT 1,manually_deleted INTEGER DEFAULT 0);
     CREATE TABLE listing_travel_times(listing_id TEXT);
     INSERT INTO users VALUES('alice'),('bob');
     INSERT INTO jobs VALUES('mine','alice','[]','My search','rent'),('private','bob','[]','Private','rent');`);
@@ -91,7 +93,12 @@ describe('map API with real SQLite listing projection and saved fit', () => {
     expect(response.statusCode).toBe(200);
     const rows = response.json().listings;
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ id: 'one', fitSummary: { score: 90, stale: false } });
+    expect(rows[0]).toMatchObject({
+      id: 'one',
+      created_at: 1000,
+      published_at: 500,
+      fitSummary: { score: 90, stale: false },
+    });
     for (const field of ['description', 'charges', 'charges_included', 'energy_class'])
       expect(rows[0]).not.toHaveProperty(field);
     expect(JSON.stringify(rows)).not.toContain('Private preferences');

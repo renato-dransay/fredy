@@ -71,6 +71,7 @@ USER node
 RUN yarn build:frontend
 
 COPY --chown=node:node index.js ./
+COPY --chown=node:node tools/maintenance/ingestion-status.js ./tools/maintenance/ingestion-status.js
 
 
 USER root

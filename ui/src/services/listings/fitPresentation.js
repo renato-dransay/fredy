@@ -55,7 +55,8 @@ export function filterByMinFit(listings, minimum) {
 
 /**
  * Sort viewport results after position grouping, matching the overview's saved-score order.
- * Missing assessments are last in either direction; date/id break ties. Never mutates store rows.
+ * Confirmed must-have failures follow other assessed listings, with scores ordered within each
+ * group. Missing assessments are last in either direction; date/id break ties. Never mutates rows.
  * @param {Object[]} listings
  * @param {'asc'|'desc'|null} direction Null preserves the map's original ordering.
  * @returns {Object[]}
@@ -67,6 +68,10 @@ export function sortByFit(listings, direction) {
     const left = score(a);
     const right = score(b);
     if ((left == null) !== (right == null)) return left == null ? 1 : -1;
+    if (left != null && right != null) {
+      const failure = Number(a.fitSummary.hardFailure === true) - Number(b.fitSummary.hardFailure === true);
+      if (failure) return failure;
+    }
     if (left != null && right != null && left !== right) return (left - right) * (direction === 'asc' ? 1 : -1);
     const date = (b.published_at ?? b.created_at ?? 0) - (a.published_at ?? a.created_at ?? 0);
     return date || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);

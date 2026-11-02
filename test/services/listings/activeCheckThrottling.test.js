@@ -22,7 +22,7 @@ describe('alive checker throttling', () => {
   beforeEach(async () => {
     db = new Database(':memory:');
     db.exec(`
-      CREATE TABLE listings (
+      CREATE TABLE listings ( location_source TEXT, search_state TEXT NOT NULL DEFAULT 'match', search_reason TEXT,
         id TEXT PRIMARY KEY,
         link TEXT,
         provider TEXT,
@@ -262,3 +262,8 @@ describe('alive checker throttling', () => {
     });
   });
 });
+
+vi.mock('../../../lib/services/storage/searchEligibilityStorage.js', () => ({
+  recheckSearchEligibility: vi.fn(),
+  matchingSearchListings: (rows) => rows,
+}));

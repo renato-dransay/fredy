@@ -207,3 +207,8 @@ describe('jobStorage.appendJobBlacklist', () => {
     expect(updateCall).toBeUndefined();
   });
 });
+
+vi.mock('../../lib/services/storage/searchEligibilityStorage.js', () => ({
+  recheckSearchEligibility: vi.fn(),
+  matchingSearchListings: (rows) => rows,
+}));

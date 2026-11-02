@@ -1815,5 +1815,12 @@
   "search.icon.lease": "Mietvertrag",
   "search.icon.furniture": "Möblierung",
   "search.icon.requirement": "Anforderung",
-  "map.results.showAll": "Alle {{count}} Treffer anzeigen"
+  "map.results.showAll": "Alle {{count}} Treffer anzeigen",
+  "listings.searchMatches": "Passende Angebote",
+  "listings.locationReview": "Standort prüfen",
+  "listings.searchExcluded": "Ausgeschlossene Angebote",
+  "listings.searchEligibilityHelp": "Das gespeicherte Suchgebiet gilt für alle Portale. Unklare Standorte müssen geprüft werden; Tauschangebote und bestätigte Standorte außerhalb werden ausgeschlossen.",
+  "listings.reasonSwap": "Wohnungstausch",
+  "listings.reasonOutside": "Außerhalb des Suchgebiets",
+  "listings.confirmLocationOnMap": "Die Adresse ist nur ungefähr bekannt. Bitte den genauen Standort auf der Karte markieren."
 }

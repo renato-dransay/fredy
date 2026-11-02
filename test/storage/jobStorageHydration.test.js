@@ -33,7 +33,7 @@ describe('jobStorage notification adapter hydration', () => {
         notification_adapter TEXT, shared_with_user TEXT, spatial_filter TEXT, spec_filter TEXT, commute_filter TEXT,
         deal_type TEXT, last_run_at INTEGER
       );
-      CREATE TABLE listings (id TEXT PRIMARY KEY, job_id TEXT, is_active INTEGER, manually_deleted INTEGER);
+      CREATE TABLE listings ( location_source TEXT, search_state TEXT NOT NULL DEFAULT 'match', search_reason TEXT, id TEXT PRIMARY KEY, job_id TEXT, is_active INTEGER, manually_deleted INTEGER);
       CREATE TABLE configured_adapter (
         id TEXT PRIMARY KEY, user_id TEXT NOT NULL, adapter_id TEXT NOT NULL, name TEXT NOT NULL,
         fields TEXT NOT NULL DEFAULT '{}', visibility TEXT NOT NULL DEFAULT 'private',
@@ -189,3 +189,8 @@ describe('jobStorage notification adapter hydration', () => {
     });
   });
 });
+
+vi.mock('../../lib/services/storage/searchEligibilityStorage.js', () => ({
+  recheckSearchEligibility: vi.fn(),
+  matchingSearchListings: (rows) => rows,
+}));

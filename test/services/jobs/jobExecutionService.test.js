@@ -28,6 +28,14 @@ describe('services/jobs/jobExecutionService', () => {
 
     vi.resetModules();
     vi.doMock(busPath, () => ({ bus }));
+    vi.doMock(root + '/lib/services/ingestion/runMonitor.js', () => ({
+      recoverInterruptedRuns: () => calls.recovered++,
+      startIngestionRun: (jobId, provider) => {
+        const monitor = { stage: vi.fn(), failed: vi.fn(), finish: vi.fn() };
+        calls.monitors.push({ jobId, provider, monitor });
+        return monitor;
+      },
+    }));
     vi.doMock(jobStoragePath, () => ({
       getJob: (id) => state.jobsById[id] || null,
       getJobs: () => state.jobsList.slice(),
@@ -59,6 +67,7 @@ describe('services/jobs/jobExecutionService', () => {
     vi.doMock(puppeteerPath, () => ({
       launchBrowser: async (...args) => {
         calls.launchBrowser.push(args);
+        if (state.browserError) throw state.browserError;
         return state.browser;
       },
       closeBrowser: async (browser) => {
@@ -71,7 +80,9 @@ describe('services/jobs/jobExecutionService', () => {
           calls.pipeline.push({ config, job, providerId, similarityCache, browser });
         }
 
-        async execute() {}
+        async execute() {
+          if (state.pipelineError) throw state.pipelineError;
+        }
       },
     }));
     vi.doMock(root + '/lib/services/demo/demoService.js', () => ({
@@ -105,6 +116,8 @@ describe('services/jobs/jobExecutionService', () => {
       launchBrowser: [],
       closeBrowser: [],
       pipeline: [],
+      monitors: [],
+      recovered: 0,
     };
     state = {
       jobsById: {},
@@ -113,6 +126,21 @@ describe('services/jobs/jobExecutionService', () => {
       providers: [],
       browser: { connected: true },
     };
+  });
+
+  it('finishes a failed receipt when browser startup fails before the pipeline', async () => {
+    state.providers = [{ metaInformation: { id: 'browser' }, createConfig: () => ({ url: 'https://example.com' }) }];
+    state.jobsById.j1 = { id: 'j1', provider: [{ id: 'browser' }] };
+    state.browserError = new Error('browser unavailable');
+    await initService();
+    bus.emit('jobs:runOne', { jobId: 'j1' });
+    await vi.waitFor(() => expect(calls.markFinished).toContain('j1'));
+    expect(calls.recovered).toBe(1);
+    expect(calls.monitors).toHaveLength(1);
+    expect(calls.monitors[0].monitor.stage).toHaveBeenCalledWith('browser');
+    expect(calls.monitors[0].monitor.failed).toHaveBeenCalledWith(state.browserError);
+    expect(calls.monitors[0].monitor.finish).toHaveBeenCalledOnce();
+    expect(calls.pipeline).toHaveLength(0);
   });
 
   it('forwards SSE jobStatus to owner, shared users and admins', async () => {

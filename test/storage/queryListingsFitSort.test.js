@@ -18,7 +18,7 @@ import { queryListings, deleteListingsByFilter } from '../../lib/services/storag
 beforeEach(() => {
   db = new Database(':memory:');
   db.exec(`CREATE TABLE jobs(id TEXT PRIMARY KEY,user_id TEXT,name TEXT,shared_with_user TEXT DEFAULT '[]',deal_type TEXT);
- CREATE TABLE listings(id TEXT PRIMARY KEY,job_id TEXT,title TEXT,provider TEXT,price REAL,size REAL,rooms REAL,address TEXT,link TEXT,status TEXT,distances TEXT,created_at INTEGER,published_at INTEGER,is_active INTEGER DEFAULT 1,manually_deleted INTEGER DEFAULT 0);
+ CREATE TABLE listings( location_source TEXT, search_state TEXT NOT NULL DEFAULT 'match', search_reason TEXT, id TEXT PRIMARY KEY,job_id TEXT,title TEXT,provider TEXT,price REAL,size REAL,rooms REAL,address TEXT,link TEXT,status TEXT,distances TEXT,created_at INTEGER,published_at INTEGER,is_active INTEGER DEFAULT 1,manually_deleted INTEGER DEFAULT 0);
  CREATE TABLE watch_list(id TEXT PRIMARY KEY,listing_id TEXT,user_id TEXT);
  CREATE TABLE listing_attachments(id TEXT PRIMARY KEY,listing_id TEXT);
  CREATE TABLE listing_travel_times(listing_id TEXT,target_id TEXT,label TEXT,address TEXT,lat REAL,lng REAL,transit_minutes REAL,transit_fallback INTEGER,transit_error TEXT,car_minutes REAL,car_error TEXT,bike_minutes REAL,bike_error TEXT,walk_minutes REAL,walk_error TEXT,computed_at INTEGER);
@@ -64,6 +64,23 @@ const page = (extra = {}) =>
 const ids = (result) => result.result.map((row) => row.id);
 
 describe('saved JEV scores sorted in real SQLite', () => {
+  it('ranks confirmed must-have failures after other assessed listings without collapsing their scores', () => {
+    db.prepare(
+      "UPDATE apartment_fit_results SET result=json_set(result, '$.hardFailure', json('false'), '$.hardUnknown', json('true')) WHERE user_id='alice' AND listing_id='low'",
+    ).run();
+    expect(ids(page())).toEqual(['low', 'high-a', 'high-b', 'shared', 'zero', 'bob-only', 'unassessed']);
+    expect(ids(page({ sortDir: 'asc' }))).toEqual([
+      'low',
+      'zero',
+      'shared',
+      'high-a',
+      'high-b',
+      'bob-only',
+      'unassessed',
+    ]);
+    expect(ids(page({ pageSize: 2 }))).toEqual(['low', 'high-a']);
+    expect(ids(page({ minFitScore: 70 }))).toEqual(['high-a', 'high-b', 'shared']);
+  });
   it('orders numerically across the full result with unassessed last and stable ties', () => {
     expect(ids(page())).toEqual(['high-a', 'high-b', 'shared', 'low', 'zero', 'bob-only', 'unassessed']);
     expect(page().totalNumber).toBe(7);
@@ -138,3 +155,8 @@ describe('minimum saved listing fit', () => {
     expect(db.prepare("SELECT manually_deleted FROM listings WHERE id = 'private'").get().manually_deleted).toBe(0);
   });
 });
+
+vi.mock('../../lib/services/storage/searchEligibilityStorage.js', () => ({
+  recheckSearchEligibility: vi.fn(),
+  matchingSearchListings: (rows) => rows,
+}));
