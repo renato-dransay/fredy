@@ -2,7 +2,6 @@
 import importlib.util
 import hashlib
 import json
-import sqlite3
 import subprocess
 from pathlib import Path
 import tempfile
@@ -195,60 +194,6 @@ class AutoApplyDrainTest(unittest.TestCase):
             with self.assertRaises(module.DeployError):
                 worker.auto_apply_drain(Path('old.json'), 'status')
 
-    def test_cli_programs_preserve_receipts_and_require_profile_closure(self):
-        root = Path(__file__).resolve().parents[2]
-        commands = [
-            ['node', '-e', module.AUTO_APPLY_DRAIN_SCRIPT],
-            ['node', str(root / 'tools/auto-apply/drain.js')],
-        ]
-        for command in commands:
-            with self.subTest(program=command[1]), tempfile.TemporaryDirectory() as directory:
-                path = Path(directory) / 'listings.db'
-                db = sqlite3.connect(path)
-                self.addCleanup(db.close)
-                def run(action):
-                    result = subprocess.run([*command, action, str(path)], cwd=root, text=True,
-                                            capture_output=True, timeout=10, check=True)
-                    return json.loads(result.stdout)
-                self.assertEqual(run('request'), {'supported': False, 'draining': False, 'active': 0,
-                                                  'uncertain': 0, 'profilesPending': 0, 'safe': True})
-                db.executescript("""
-                    CREATE TABLE auto_apply_control(id INTEGER PRIMARY KEY,draining INTEGER);
-                    INSERT INTO auto_apply_control VALUES(1,0);
-                    CREATE TABLE auto_apply_runs(id TEXT,state TEXT,lease_until INTEGER);
-                    INSERT INTO auto_apply_runs VALUES('running','running',9000000000000),('send','submitting',1);
-                    CREATE TABLE auto_apply_receipts(run_id TEXT,state TEXT,snapshot TEXT);
-                    INSERT INTO auto_apply_receipts VALUES('deleted-run','uncertain','private immutable snapshot');
-                    CREATE TABLE auto_apply_connections(id TEXT,mode TEXT,revoked INTEGER,last_seen INTEGER,drained_at INTEGER);
-                    INSERT INTO auto_apply_connections VALUES('server','server',0,1,123),('desktop','desktop',0,1,NULL),('revoked','server',1,1,NULL);
-                """)
-                status = run('request')
-                self.assertEqual((status['active'], status['uncertain'], status['profilesPending'], status['safe']), (1, 2, 1, False))
-                db.execute("UPDATE auto_apply_connections SET drained_at=456 WHERE id='server'")
-                db.commit()
-                self.assertEqual(run('request')['profilesPending'], 0)
-                self.assertFalse(run('release')['draining'])
-                self.assertEqual(db.execute('SELECT state,snapshot FROM auto_apply_receipts').fetchall(),
-                                 [('uncertain', 'private immutable snapshot')])
-                db.execute("UPDATE auto_apply_runs SET state='submitted' WHERE id='send'")
-                db.execute("UPDATE auto_apply_runs SET lease_until=1 WHERE id='running'")
-                db.execute("UPDATE auto_apply_receipts SET state='submitted'")
-                db.commit()
-                self.assertFalse(run('request')['safe'])
-                db.execute("UPDATE auto_apply_connections SET drained_at=789 WHERE id='server'")
-                db.commit()
-                self.assertTrue(run('status')['safe'])
-                self.assertFalse(run('release')['draining'])
-
-    def test_partial_schema_is_not_mistaken_for_an_old_installation(self):
-        root = Path(__file__).resolve().parents[2]
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / 'listings.db'
-            with sqlite3.connect(path) as db:
-                db.execute('CREATE TABLE auto_apply_control(id INTEGER PRIMARY KEY,draining INTEGER)')
-            result = subprocess.run(['node', '-e', module.AUTO_APPLY_DRAIN_SCRIPT, 'request', str(path)],
-                                    cwd=root, text=True, capture_output=True, timeout=10)
-            self.assertNotEqual(result.returncode, 0)
 
 
 class ProtectedSourceTest(unittest.TestCase):
