@@ -42,7 +42,7 @@ describe('restoring weighted fit scores', () => {
       up(db);
       const rows = db.prepare('SELECT result FROM apartment_fit_results ORDER BY user_id').all();
       expect(rows.map((r) => JSON.parse(r.result))).toEqual(
-        originals.map((r) => ({ ...r, score: summarizeFit(r.criteria).score })),
+        originals.map((r, index) => ({ ...r, score: [50, 17, 17, 0, 0][index] })),
       );
       expect(rows.map((r) => JSON.parse(r.result).score)).toEqual([50, 17, 17, 0, 0]);
     } finally {

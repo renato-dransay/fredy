@@ -17,6 +17,7 @@ import SettingsEmptyState from '../../../components/settingsShell/SettingsEmptyS
 import SettingsSaveBar from '../../../components/settingsShell/SettingsSaveBar.jsx';
 import AdminField from '../../admin/components/AdminField.jsx';
 import JobReadinessBar from './JobReadinessBar.jsx';
+import AutoApplyRuleEditor from '../../../components/autoApply/AutoApplyRuleEditor.jsx';
 import { SECTION_BY_REQUIREMENT } from './jobSections.js';
 import { isJobDirty } from '../../../services/jobs/jobDirty.js';
 import { useUnsavedWarning } from '../../../hooks/useUnsavedWarning.js';
@@ -875,6 +876,7 @@ function JobMutator({ source }) {
           onDiscard={discardChanges}
         />
       </form>
+      {isEdit && <AutoApplyRuleEditor jobId={sourceJob.id} />}
     </div>
   );
 }

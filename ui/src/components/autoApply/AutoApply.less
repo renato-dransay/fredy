@@ -1,0 +1,102 @@
+@import '../../tokens.less';
+
+.autoApply {
+  display: grid;
+  gap: 16px;
+  margin: 24px 0;
+  color: @color-text;
+
+  &__card {
+    min-width: 0;
+    padding: 16px;
+    border: 1px solid @color-border;
+    border-radius: 8px;
+    background: @color-surface;
+  }
+
+  &__fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
+    gap: 12px;
+    margin: 12px 0;
+  }
+
+  &__field {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 12px 0;
+  }
+
+  &__check {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 8px 0;
+  }
+
+  &__list {
+    display: grid;
+    gap: 12px;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__receipt {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-size: 13px;
+    max-height: 420px;
+    overflow: auto;
+  }
+
+  &__frame {
+    display: block;
+    width: 100%;
+    max-height: 75vh;
+    object-fit: contain;
+    object-position: left top;
+    cursor: crosshair;
+  }
+
+  &__muted {
+    color: @color-muted;
+    overflow-wrap: anywhere;
+  }
+
+  &__description {
+    display: block;
+    color: @color-muted;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  &__error {
+    color: @color-accent-text;
+  }
+
+  input[type='text'],
+  input[type='password'],
+  textarea,
+  select {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 8px;
+    border: 1px solid @color-border;
+    border-radius: 4px;
+    background: @color-elevated;
+    color: @color-text;
+  }
+
+  summary {
+    cursor: pointer;
+  }
+}

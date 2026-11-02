@@ -79,6 +79,15 @@ afterEach(async () => {
 });
 
 describe('private saved fit summaries', () => {
+  it('preserves all-unknown null scores through map, table and detail API responses', async () => {
+    saveFitResult('alice', 'one', { ...result, score: null, coverage: 0, hardFailure: false, hardUnknown: true });
+    const map = (await app.inject('/api/listings/map')).json().listings[0];
+    const table = (await app.inject('/api/listings/table')).json().result[0];
+    const detail = (await app.inject('/api/listings/one')).json();
+    for (const row of [map, table, detail]) {
+      expect(row.fitSummary).toMatchObject({ score: null, coverage: 0, hardUnknown: true });
+    }
+  });
   it('projects only the current user receipt in two queries per page, including null for unassessed rows', () => {
     SqliteConnection.query.mockClear();
     const rows = attachFitSummaries(ctx.rows, 'alice');

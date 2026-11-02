@@ -128,10 +128,24 @@ describe('fit scoring and provenance', () => {
         .join(''),
     ).toBe(description);
   });
-  it('unknown hard requirements remain unknown and reduce conservative score', () => {
+  it('unknown hard requirements remain unknown without reducing the known-only score', () => {
     expect(
       summarizeFit([requirement({ verdict: 'met' }), requirement({ id: 'b', verdict: 'unknown', weight: 3 })]),
-    ).toEqual({ score: 40, coverage: 40, hardFailure: false, hardUnknown: true });
+    ).toEqual({ score: 100, coverage: 40, hardFailure: false, hardUnknown: true });
+  });
+  it('scores only known weights while retaining coverage separately', () => {
+    expect(
+      summarizeFit([
+        requirement({ verdict: 'met', weight: 4 }),
+        requirement({ id: 'no', verdict: 'unmet', weight: 1, required: false }),
+        requirement({ id: 'unknown', verdict: 'unknown', weight: 5 }),
+      ]),
+    ).toEqual({ score: 80, coverage: 50, hardFailure: false, hardUnknown: true });
+  });
+  it('distinguishes all-unknown and empty assessments from a known zero', () => {
+    expect(summarizeFit([requirement({ verdict: 'unknown' })])).toMatchObject({ score: null, coverage: 0 });
+    expect(summarizeFit([])).toMatchObject({ score: null, coverage: 0 });
+    expect(summarizeFit([requirement({ verdict: 'unmet' })])).toMatchObject({ score: 0, coverage: 100 });
   });
   it('retains the weighted score and flags a must-have failure independently', () => {
     const result = summarizeFit([
@@ -179,7 +193,7 @@ describe('fit scoring and provenance', () => {
       station: async () => ({ verdict: 'unknown', confidence: 0, evidence: [] }),
     });
     expect(result.criteria.map((c) => c.id)).toEqual(['price', 'c1', 'metro']);
-    expect(result).toMatchObject({ score: 67, coverage: 67, hardUnknown: true, profileVersion: 1 });
+    expect(result).toMatchObject({ score: 100, coverage: 67, hardUnknown: true, profileVersion: 1 });
     expect(result.evidenceHash).toBe(fitEvidenceHash(profile, listing));
     expect(isFitStale(result, profile, listing)).toBe(false);
     expect(isFitStale(result, { ...profile, version: 2 }, listing)).toBe(true);

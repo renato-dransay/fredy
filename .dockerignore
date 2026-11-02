@@ -1,5 +1,6 @@
 # Dependencies (will be installed fresh in container)
 node_modules/
+**/node_modules/
 
 # Database and config (mounted as volumes)
 db/

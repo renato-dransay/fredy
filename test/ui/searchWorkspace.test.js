@@ -9,16 +9,11 @@ import {
   utcFromLocal,
   localFromUtc,
   isFollowUpDue,
-  mailSettingsPayload,
-  sendNeedsReview,
 } from '../../ui/src/services/searchWorkspace.js';
 import {
   loadFit,
   evaluateFit,
   saveApplication,
-  sendApplication,
-  resolveApplicationDelivery,
-  saveMailSettings,
   visitCalendarUrl,
 } from '../../ui/src/services/searchWorkspaceClient.js';
 
@@ -58,23 +53,6 @@ describe('application dates and follow-ups', () => {
     expect(isFollowUpDue({ status: 'draft', followUpAt: '2026-11-21T11:59:00Z' }, now)).toBe(false);
     expect(isFollowUpDue({ status: 'draft', followUpAt: null }, now)).toBe(false);
   });
-  it('blocks retry while transport acceptance is uncertain or in progress', () => {
-    expect(sendNeedsReview('uncertain')).toBe(true);
-    expect(sendNeedsReview('dispatching')).toBe(true);
-    expect(sendNeedsReview('not_sent')).toBe(false);
-  });
-});
-
-describe('mail configuration edits', () => {
-  it('omits blank passwords but preserves an explicit credential-clear request', () => {
-    const result = mailSettingsPayload({
-      smtp: { host: 'mail.example.test', port: '465', password: '', configured: true, passwordSet: true },
-      imap: { host: 'imap.example.test', port: '993', password: null, configured: true },
-    });
-    expect(result.smtp).toEqual({ host: 'mail.example.test', port: 465 });
-    expect(result.imap.password).toBeNull();
-    expect(result.imap).not.toHaveProperty('configured');
-  });
 });
 
 describe('workspace API boundaries', () => {
@@ -94,36 +72,15 @@ describe('workspace API boundaries', () => {
     );
     await expect(evaluateFit('flat')).rejects.toMatchObject({ status: 503, json: { code: 'not_configured' } });
   });
-  it('saving a draft is distinct from submitting it and retains one send idempotency key', async () => {
-    const request = vi
-      .fn()
-      .mockImplementation(() => Promise.resolve(respond({ application: { id: 'a' }, events: [] })));
+  it('records status changes without an email request or overwriting the draft', async () => {
+    const request = vi.fn().mockResolvedValue(respond({ application: { id: 'a', status: 'submitted' }, events: [] }));
     vi.stubGlobal('fetch', request);
-    await saveApplication('flat', { body: 'Reviewed letter', recipient: 'landlord@example.test' });
-    expect(request.mock.calls[0][0]).toBe('/api/applications/listings/flat');
-    await sendApplication('flat', 'stable-key', 4);
-    await sendApplication('flat', 'stable-key', 4);
-    expect(request.mock.calls.slice(1).map((call) => JSON.parse(call[1].body))).toEqual([
-      { idempotencyKey: 'stable-key', expectedRevision: 4 },
-      { idempotencyKey: 'stable-key', expectedRevision: 4 },
-    ]);
+    await saveApplication('flat/one', { status: 'submitted' });
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(request.mock.calls[0][0]).toBe('/api/applications/listings/flat%2Fone');
+    expect(JSON.parse(request.mock.calls[0][1].body)).toEqual({ status: 'submitted' });
   });
-  it('submits manual uncertainty evidence separately from another send attempt', async () => {
-    const request = vi.fn().mockResolvedValue(respond({ application: {}, events: [] }));
-    vi.stubGlobal('fetch', request);
-    await resolveApplicationDelivery('flat', 'not_sent', 'Checked Sent folder and server log.');
-    expect(request.mock.calls[0][0]).toBe('/api/applications/listings/flat/resolve-delivery');
-    expect(JSON.parse(request.mock.calls[0][1].body)).toEqual({
-      outcome: 'not_sent',
-      note: 'Checked Sent folder and server log.',
-    });
-  });
-  it('encodes calendar identifiers and sends mail passwords only to the settings mutation', async () => {
-    const request = vi.fn().mockResolvedValue(respond({ smtp: { configured: true } }));
-    vi.stubGlobal('fetch', request);
-    await saveMailSettings({ smtp: { password: 'test-only' } });
-    expect(request.mock.calls[0][0]).toBe('/api/applications/mail');
-    expect(request.mock.calls[0][1].method).toBe('POST');
+  it('encodes calendar identifiers', () => {
     expect(visitCalendarUrl('flat/one')).toBe('/api/applications/listings/flat%2Fone/visit.ics');
   });
 });

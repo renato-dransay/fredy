@@ -28,7 +28,6 @@ import { initTravelTimeCron } from './lib/services/crons/travel-time-cron.js';
 import { initConnectivityCron } from './lib/services/crons/connectivity-cron.js';
 import { initTourCleanupCron } from './lib/services/crons/tour-cleanup-cron.js';
 import { waitForDeploymentActivation } from './lib/services/deploymentGate.js';
-import { startApplicationScheduler } from './lib/services/applications/scheduler.js';
 
 // Ensure the CloakBrowser stealth Chromium binary is present and complete before
 // jobs run.  ensureValidBinary() also detects and auto-heals partial extractions
@@ -111,7 +110,6 @@ await ensureDemoUserExists();
 // The deployment worker may restore a snapshot only until this gate is released.
 // No cron, mail dispatch, scraping, or user mutation runs before acceptance.
 await waitForDeploymentActivation();
-startApplicationScheduler();
 
 // A demo instance must always present a working Fredy: the demo job is created on the first
 // start and repaired on every later one, so a drifted config can never leave the demo empty.
@@ -144,3 +142,7 @@ logger.info(`Started Fredy successfully. Ui can be accessed via http://localhost
 
 // Initialize the lean Job Execution Service (schedules and bus listeners)
 initJobExecutionService({ providers, intervalMs: INTERVAL });
+
+// Durable browser application recovery runs only after deployment activation.
+const { startAutoApply } = await import('./lib/services/autoApply/service.js');
+startAutoApply();

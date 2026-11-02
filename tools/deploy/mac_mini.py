@@ -22,6 +22,37 @@ class RecoveryError(DeployError):
     """Runtime/data recovery is unresolved; newer commits must not be attempted."""
 
 
+# Inline so the installed deployer can drain a previous image that predates drain.js.
+# Keep behavior in step with tools/auto-apply/drain.js; both programs have SQLite tests.
+AUTO_APPLY_DRAIN_SCRIPT = r'''
+const Database = require('better-sqlite3');
+const command = process.argv[1];
+if (!['request', 'status', 'release'].includes(command)) throw new Error('Invalid drain command');
+const db = new Database(process.argv[2] || '/db/listings.db', { fileMustExist: true, timeout: 5000 });
+try {
+  const result = db.transaction(() => {
+    const tables = ['auto_apply_control', 'auto_apply_runs', 'auto_apply_receipts', 'auto_apply_connections'];
+    const present = tables.filter(name => db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(name));
+    if (!present.length) return {supported:false,draining:false,active:0,uncertain:0,profilesPending:0,safe:true};
+    if (present.length !== tables.length) throw new Error('Incomplete auto-apply schema; refusing deployment');
+    const control = db.prepare('SELECT draining FROM auto_apply_control WHERE id=1').get();
+    if (!control) throw new Error('Missing auto-apply control; refusing deployment');
+    if (command === 'request' && control.draining !== 1) {
+      db.prepare('UPDATE auto_apply_control SET draining=1 WHERE id=1').run();
+      db.prepare("UPDATE auto_apply_connections SET drained_at=NULL WHERE mode='server' AND revoked=0").run();
+    }
+    if (command === 'release') db.prepare('UPDATE auto_apply_control SET draining=0 WHERE id=1').run();
+    const draining = db.prepare('SELECT draining FROM auto_apply_control WHERE id=1').get().draining === 1;
+    const active = db.prepare("SELECT COUNT(*) AS n FROM auto_apply_runs WHERE state='running' AND lease_until>?").get(Date.now()).n;
+    const uncertain = db.prepare("SELECT COUNT(*) AS n FROM (SELECT id FROM auto_apply_runs WHERE state IN ('submitting','uncertain') UNION ALL SELECT run_id FROM auto_apply_receipts WHERE state IN ('submitting','uncertain'))").get().n;
+    const profilesPending = db.prepare("SELECT COUNT(*) AS n FROM auto_apply_connections WHERE mode='server' AND revoked=0 AND last_seen IS NOT NULL AND drained_at IS NULL").get().n;
+    return {supported:true,draining,active,uncertain,profilesPending,safe:draining && active===0 && uncertain===0 && profilesPending===0};
+  }).immediate();
+  process.stdout.write(JSON.stringify(result));
+} finally { db.close(); }
+'''
+
+
 def queued_commits(deployed, commits):
     """Keep first-parent history order and never redeploy a successful revision."""
     return [sha for sha in commits if sha != deployed]
@@ -240,6 +271,48 @@ class Deployer:
     def activate(self, path):
         self.compose(path, 'exec', '-T', 'fredy', 'touch', '/tmp/fredy-deployment-active')
 
+    def auto_apply_drain(self, path, command, timeout=10):
+        """Run inside the current image without requiring its copy of the new helper."""
+        raw = self.docker('compose', '-p', self.project, '-f', str(path), 'exec', '-T', 'fredy',
+                          'node', '-e', AUTO_APPLY_DRAIN_SCRIPT, command,
+                          env=self.runtime_env(), capture=True, timeout=timeout)
+        try:
+            status = json.loads(raw)
+            if (not isinstance(status, dict) or
+                    any(type(status[key]) is not bool for key in ['supported', 'draining', 'safe']) or
+                    any(type(status[key]) is not int or status[key] < 0 for key in ['active', 'uncertain', 'profilesPending'])):
+                raise ValueError('Invalid drain status')
+            expected_safe = ((not status['supported'] and not status['draining']) or status['draining']) and not any(
+                status[key] for key in ['active', 'uncertain', 'profilesPending'])
+            if status['safe'] is not expected_safe:
+                raise ValueError('Inconsistent drain status')
+        except (ValueError, TypeError, KeyError):
+            raise DeployError('Could not verify auto-apply drain; refusing snapshot') from None
+        return status
+
+    def drain(self, path):
+        """Freeze claims/submissions, then wait at most sixty seconds for browsers to close."""
+        deadline = time.monotonic() + 60
+        status = self.auto_apply_drain(path, 'request')
+        while True:
+            if status['uncertain']:
+                raise DeployError('Auto-apply has submitting or uncertain outcomes; reconcile them before deployment. Drain remains active.')
+            if status['safe']:
+                return
+            if time.monotonic() >= deadline:
+                raise DeployError('Auto-apply did not drain within sixty seconds; close/reconnect server workers. Drain remains active.')
+            time.sleep(min(1, max(0, deadline - time.monotonic())))
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise DeployError('Auto-apply drain timed out; no snapshot was taken. Drain remains active.')
+            status = self.auto_apply_drain(path, 'status', timeout=min(10, remaining))
+
+    def release_drain(self, path):
+        """Resume only after activation/recovery, preserving run and submission receipts."""
+        status = self.auto_apply_drain(path, 'release')
+        if status['draining']:
+            raise DeployError('Auto-apply drain could not be released')
+
     def switch(self, sha, image, next_compose, backup):
         """Snapshot rollback is confined to the preactivation interval, never later."""
         previous_path = Path(self.state.get('compose', self.config['initial_compose']))
@@ -248,6 +321,9 @@ class Deployer:
         stopped = False
         snapshotted = False
         try:
+            # External desktop/server workers outlive an API container. Stop their ability to
+            # send and await profile closure before taking a rollback-capable database snapshot.
+            self.drain(previous_path)
             self.compose(previous_path, 'stop', '--timeout', '45')
             stopped = True
             self.snapshot(previous_image, backup)
@@ -259,6 +335,7 @@ class Deployer:
             released = True
             self.activate(next_compose)
             self.ready(sha, True)
+            self.release_drain(next_compose)
             return previous_path, previous_image
         except Exception:
             if stopped:
@@ -266,10 +343,11 @@ class Deployer:
                     self.compose(next_compose, 'stop', '--timeout', '45')
                     if snapshotted and not released:
                         self.restore(previous_image, backup)
-                    # Post-release rollback is code-only: preserve user writes and all SMTP receipts.
+                    # Post-release rollback is code-only: preserve user writes and all send receipts.
                     self.compose(previous_path, 'up', '-d', '--force-recreate', '--wait', '--wait-timeout', '180')
                     if self.state.get('deployed'):
                         self.activate(previous_path)
+                    self.release_drain(previous_path)
                 except Exception:
                     raise RecoveryError('Recovery incomplete; inspect deployment logs before retrying') from None
             raise

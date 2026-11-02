@@ -1,0 +1,14 @@
+{
+  "name": "fredy-auto-apply-worker",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.22.0"
+  },
+  "scripts": {
+    "start": "node worker.js"
+  },
+  "dependencies": {
+    "@browserbasehq/stagehand": "4.3.0"
+  }
+}

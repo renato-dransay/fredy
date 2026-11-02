@@ -72,6 +72,7 @@ RUN yarn build:frontend
 
 COPY --chown=node:node index.js ./
 COPY --chown=node:node tools/maintenance/ingestion-status.js ./tools/maintenance/ingestion-status.js
+COPY --chown=node:node tools/auto-apply/drain.js ./tools/auto-apply/drain.js
 
 
 USER root

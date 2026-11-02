@@ -79,12 +79,12 @@ describe('Jev result display', () => {
   });
   it.each([
     [{ hardFailure: true }, 'low'],
-    [{ hardUnknown: true }, 'medium'],
+    [{ hardUnknown: true }, 'high'],
     [{ stale: true }, 'medium'],
-  ])('never gives an unresolved or failed must-have a green score: %j', (flags, tone) => {
+  ])('colors known scores independently of unresolved criteria: %j', (flags, tone) => {
     const html = render(FitSummary, { summary: { score: 95, coverage: 70, ...flags } });
     expect(html).toContain(`fitSummary__score--${tone}`);
-    expect(html).not.toContain('fitSummary__score--high');
+    expect(html.includes('fitSummary__score--high')).toBe(tone === 'high');
   });
   it('renders every secondary status as a small chip, including unassessed', () => {
     const html = render(FitSummary, { summary });
@@ -135,6 +135,15 @@ describe('Jev result display', () => {
     const html = render(FitSummary, { summary: { ...summary, score: 0 } });
     expect(html).toContain('>0</strong>');
     expect(html).not.toContain('Not assessed');
+  });
+  it.each([true, false])('keeps an all-unknown assessment distinct from missing and zero in compact=%s', (compact) => {
+    const html = render(FitSummary, { summary: { score: null, coverage: 0, hardUnknown: true }, compact });
+    expect(html).toContain('No known criteria');
+    expect(html).toContain('0% assessed');
+    expect(html).toContain('Must-haves unverified');
+    expect(html).not.toContain('Not assessed');
+    expect(html).not.toContain('>0</strong>');
+    expect(html).not.toContain('fitSummary__score--high');
   });
   it('keeps stale, failed and unknown must-have warnings visible next to even a high score', () => {
     const html = render(FitSummary, { summary });

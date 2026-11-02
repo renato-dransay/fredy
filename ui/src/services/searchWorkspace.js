@@ -50,22 +50,3 @@ export function isFollowUpDue(application, now = Date.now()) {
   const due = Date.parse(application.followUpAt);
   return Number.isFinite(due) && due <= now;
 }
-
-/** Build a mail payload without accidentally clearing saved passwords on an ordinary edit. */
-export function mailSettingsPayload(settings) {
-  return Object.fromEntries(
-    ['smtp', 'imap'].map((kind) => {
-      const value = { ...settings[kind] };
-      delete value.configured;
-      delete value.passwordSet;
-      if (value.password === '') delete value.password;
-      value.port = Number(value.port);
-      return [kind, value];
-    }),
-  );
-}
-
-/** A transport-uncertain or in-flight application must be reconciled before another send. */
-export function sendNeedsReview(sendState) {
-  return ['unknown', 'uncertain', 'sending', 'dispatching', 'delivery_unknown'].includes(sendState);
-}

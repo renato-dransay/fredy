@@ -2,6 +2,7 @@
 import importlib.util
 import hashlib
 import json
+import sqlite3
 import subprocess
 from pathlib import Path
 import tempfile
@@ -23,7 +24,41 @@ class DeploymentTest(unittest.TestCase):
         worker.restore = Mock()
         worker.activate = Mock()
         worker.ready = Mock()
+        worker.drain = Mock()
+        worker.release_drain = Mock()
         return worker
+
+    def test_drain_precedes_stop_and_snapshot_and_resumes_after_verification(self):
+        worker = self.worker()
+        events = []
+        worker.drain.side_effect = lambda path: events.append('drain')
+        worker.compose.side_effect = lambda path, action, *args: events.append(action)
+        worker.snapshot.side_effect = lambda *args: events.append('snapshot')
+        worker.ready.side_effect = lambda sha, active: events.append('ready-active' if active else 'ready-gated')
+        worker.activate.side_effect = lambda path: events.append('activate')
+        worker.release_drain.side_effect = lambda path: events.append('release-drain')
+        worker.switch('b' * 40, 'new-image', Path('new.json'), Path('backup'))
+        self.assertEqual(events, ['drain', 'stop', 'snapshot', 'up', 'ready-gated', 'activate', 'ready-active', 'release-drain'])
+
+    def test_failed_drain_never_stops_or_snapshots_and_does_not_resume_automation(self):
+        worker = self.worker()
+        worker.drain.side_effect = module.DeployError('uncertain application outcome')
+        with self.assertRaises(module.DeployError):
+            worker.switch('b' * 40, 'new-image', Path('new.json'), Path('backup'))
+        worker.compose.assert_not_called()
+        worker.snapshot.assert_not_called()
+        worker.release_drain.assert_not_called()
+
+    def test_recovery_releases_drain_after_restarting_previous_app(self):
+        worker = self.worker()
+        worker.snapshot.side_effect = RuntimeError('snapshot failed')
+        events = []
+        worker.compose.side_effect = lambda path, action, *args: events.append(action)
+        worker.activate.side_effect = lambda path: events.append('activate')
+        worker.release_drain.side_effect = lambda path: events.append('release-drain')
+        with self.assertRaises(RuntimeError):
+            worker.switch('b' * 40, 'new-image', Path('new.json'), Path('backup'))
+        self.assertEqual(events[-3:], ['up', 'activate', 'release-drain'])
 
     def test_snapshot_failure_never_starts_new_app_and_restarts_old(self):
         worker = self.worker()
@@ -120,6 +155,100 @@ class DeploymentTest(unittest.TestCase):
         worker.restore.side_effect = RuntimeError('injected restore failure')
         with self.assertRaises(module.RecoveryError):
             worker.switch('b' * 40, 'new-image', Path('new.json'), Path('backup'))
+
+
+class AutoApplyDrainTest(unittest.TestCase):
+    def worker(self):
+        worker = module.Deployer.__new__(module.Deployer)
+        worker.project = 'fredy'
+        worker.runtime_env = Mock(return_value={})
+        worker.docker = Mock()
+        return worker
+
+    def test_submitting_or_uncertain_refuses_snapshot_immediately(self):
+        worker = self.worker()
+        worker.auto_apply_drain = Mock(return_value={'uncertain': 1, 'safe': False})
+        with self.assertRaisesRegex(module.DeployError, 'reconcile'):
+            worker.drain(Path('old.json'))
+        worker.auto_apply_drain.assert_called_once_with(Path('old.json'), 'request')
+
+    def test_waits_for_profile_acknowledgment_and_lease_expiry(self):
+        worker = self.worker()
+        worker.auto_apply_drain = Mock(side_effect=[{'uncertain': 0, 'safe': False}, {'uncertain': 0, 'safe': True}])
+        with patch.object(module.time, 'sleep'):
+            worker.drain(Path('old.json'))
+        self.assertEqual([call.args[1] for call in worker.auto_apply_drain.call_args_list], ['request', 'status'])
+
+    def test_wait_is_bounded_and_does_not_release_a_failed_drain(self):
+        worker = self.worker()
+        worker.auto_apply_drain = Mock(return_value={'uncertain': 0, 'safe': False})
+        with patch.object(module.time, 'monotonic', side_effect=[0, 61]):
+            with self.assertRaisesRegex(module.DeployError, 'sixty seconds'):
+                worker.drain(Path('old.json'))
+        self.assertEqual(worker.auto_apply_drain.call_count, 1)
+
+    def test_malformed_status_fails_closed(self):
+        worker = self.worker()
+        for status in ['invalid', '{}', json.dumps({'supported': True, 'draining': False, 'active': 0,
+                                                  'uncertain': 0, 'profilesPending': 0, 'safe': True})]:
+            worker.docker.return_value = status
+            with self.assertRaises(module.DeployError):
+                worker.auto_apply_drain(Path('old.json'), 'status')
+
+    def test_cli_programs_preserve_receipts_and_require_profile_closure(self):
+        root = Path(__file__).resolve().parents[2]
+        commands = [
+            ['node', '-e', module.AUTO_APPLY_DRAIN_SCRIPT],
+            ['node', str(root / 'tools/auto-apply/drain.js')],
+        ]
+        for command in commands:
+            with self.subTest(program=command[1]), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / 'listings.db'
+                db = sqlite3.connect(path)
+                self.addCleanup(db.close)
+                def run(action):
+                    result = subprocess.run([*command, action, str(path)], cwd=root, text=True,
+                                            capture_output=True, timeout=10, check=True)
+                    return json.loads(result.stdout)
+                self.assertEqual(run('request'), {'supported': False, 'draining': False, 'active': 0,
+                                                  'uncertain': 0, 'profilesPending': 0, 'safe': True})
+                db.executescript("""
+                    CREATE TABLE auto_apply_control(id INTEGER PRIMARY KEY,draining INTEGER);
+                    INSERT INTO auto_apply_control VALUES(1,0);
+                    CREATE TABLE auto_apply_runs(id TEXT,state TEXT,lease_until INTEGER);
+                    INSERT INTO auto_apply_runs VALUES('running','running',9000000000000),('send','submitting',1);
+                    CREATE TABLE auto_apply_receipts(run_id TEXT,state TEXT,snapshot TEXT);
+                    INSERT INTO auto_apply_receipts VALUES('deleted-run','uncertain','private immutable snapshot');
+                    CREATE TABLE auto_apply_connections(id TEXT,mode TEXT,revoked INTEGER,last_seen INTEGER,drained_at INTEGER);
+                    INSERT INTO auto_apply_connections VALUES('server','server',0,1,123),('desktop','desktop',0,1,NULL),('revoked','server',1,1,NULL);
+                """)
+                status = run('request')
+                self.assertEqual((status['active'], status['uncertain'], status['profilesPending'], status['safe']), (1, 2, 1, False))
+                db.execute("UPDATE auto_apply_connections SET drained_at=456 WHERE id='server'")
+                db.commit()
+                self.assertEqual(run('request')['profilesPending'], 0)
+                self.assertFalse(run('release')['draining'])
+                self.assertEqual(db.execute('SELECT state,snapshot FROM auto_apply_receipts').fetchall(),
+                                 [('uncertain', 'private immutable snapshot')])
+                db.execute("UPDATE auto_apply_runs SET state='submitted' WHERE id='send'")
+                db.execute("UPDATE auto_apply_runs SET lease_until=1 WHERE id='running'")
+                db.execute("UPDATE auto_apply_receipts SET state='submitted'")
+                db.commit()
+                self.assertFalse(run('request')['safe'])
+                db.execute("UPDATE auto_apply_connections SET drained_at=789 WHERE id='server'")
+                db.commit()
+                self.assertTrue(run('status')['safe'])
+                self.assertFalse(run('release')['draining'])
+
+    def test_partial_schema_is_not_mistaken_for_an_old_installation(self):
+        root = Path(__file__).resolve().parents[2]
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'listings.db'
+            with sqlite3.connect(path) as db:
+                db.execute('CREATE TABLE auto_apply_control(id INTEGER PRIMARY KEY,draining INTEGER)')
+            result = subprocess.run(['node', '-e', module.AUTO_APPLY_DRAIN_SCRIPT, 'request', str(path)],
+                                    cwd=root, text=True, capture_output=True, timeout=10)
+            self.assertNotEqual(result.returncode, 0)
 
 
 class ProtectedSourceTest(unittest.TestCase):

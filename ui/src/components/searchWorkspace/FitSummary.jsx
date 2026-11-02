@@ -10,17 +10,17 @@ import { fitTone } from '../../services/listings/fitPresentation.js';
 
 /**
  * A saved assessment on a ten-point display scale. Stored scores remain percentages for sorting.
- * Failed requirements override the color; unresolved/stale results cannot appear green.
- * Null means unassessed, never a zero score. Secondary statuses are compact chips.
+ * Failed requirements override the color; stale results cannot appear green.
+ * A null summary means unassessed; a null score means no known criteria. Neither is a zero score.
  * Reads only the compact current-user receipt; mounting this component never requests inference.
- * @param {{summary?: {score: number, coverage: number, hardFailure: boolean, hardUnknown: boolean, stale?: boolean}|null}} props
+ * @param {{summary?: {score: number|null, coverage: number, hardFailure: boolean, hardUnknown: boolean, stale?: boolean}|null}} props
  * @param {boolean} [props.compact=false] Collapse secondary statuses in repeated result cards.
  * @returns {React.ReactElement}
  */
 export default function FitSummary({ summary, compact = false }) {
   const t = useTranslation();
   const locale = useLocale();
-  if (!summary || !Number.isFinite(summary.score))
+  if (!summary)
     return (
       <div className="fitSummary fitSummary--empty">
         <span className="fitSummary__chip fitSummary__chip--neutral" title={t('search.summaryNotAssessed')}>
@@ -28,13 +28,11 @@ export default function FitSummary({ summary, compact = false }) {
         </span>
       </div>
     );
-  const score = Math.round(Math.max(0, Math.min(100, summary.score))) / 10;
+  const score = Number.isFinite(summary.score) ? Math.round(Math.max(0, Math.min(100, summary.score))) / 10 : null;
+  const scoreLabel =
+    score === null ? t('search.summaryNoKnown') : t('search.summaryScore', { value: formatDecimal(score, locale) });
   const tone = fitTone(summary);
-  const scoreElement = (
-    <strong className={`fitSummary__score fitSummary__score--${tone}`}>
-      {t('search.summaryScore', { value: formatDecimal(score, locale) })}
-    </strong>
-  );
+  const scoreElement = <strong className={`fitSummary__score fitSummary__score--${tone}`}>{scoreLabel}</strong>;
   const statuses = [
     t('search.coverage', { value: Math.round(summary.coverage) }),
     summary.stale && t('search.summaryStale'),
@@ -46,7 +44,7 @@ export default function FitSummary({ summary, compact = false }) {
       <details className="fitSummary fitSummary--compact" onClick={(event) => event.stopPropagation()}>
         <summary
           className="fitSummary__toggle"
-          aria-label={`${t('search.fitTitle')}: ${formatDecimal(score, locale)}; ${statuses.join('; ')}`}
+          aria-label={`${t('search.fitTitle')}: ${scoreLabel}; ${statuses.join('; ')}`}
         >
           <span>JEV</span>
           {scoreElement}
@@ -68,9 +66,7 @@ export default function FitSummary({ summary, compact = false }) {
     );
   return (
     <div className="fitSummary" aria-label={t('search.fitTitle')}>
-      <strong className={`fitSummary__score fitSummary__score--${tone}`}>
-        {t('search.summaryScore', { value: formatDecimal(score, locale) })}
-      </strong>
+      <strong className={`fitSummary__score fitSummary__score--${tone}`}>{scoreLabel}</strong>
       <span
         className="fitSummary__chip fitSummary__chip--neutral"
         title={t('search.coverage', { value: Math.round(summary.coverage) })}

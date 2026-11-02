@@ -33,6 +33,7 @@ import {
   PLACEHOLDER_GROUPS,
 } from '../../../services/application/placeholderCatalog.js';
 import './ApplicationPage.less';
+import AutoApplySettings from '../../../components/autoApply/AutoApplySettings.jsx';
 
 const { Text, Paragraph } = Typography;
 
@@ -542,6 +543,8 @@ export default function ApplicationPage() {
           </div>
         </div>
       </SegmentPart>
+
+      <AutoApplySettings />
 
       <SettingsSaveBar
         dirty={dirty}

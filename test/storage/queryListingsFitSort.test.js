@@ -132,6 +132,16 @@ describe('saved JEV scores sorted in real SQLite', () => {
 });
 
 describe('minimum saved listing fit', () => {
+  it('excludes all-unknown null scores from a zero floor and sorts them after actual zero', () => {
+    db.prepare(
+      "UPDATE apartment_fit_results SET result=json_set(result, '$.score', NULL, '$.hardFailure', json('false')) WHERE user_id='alice' AND listing_id='high-a'",
+    ).run();
+    expect(ids(page({ minFitScore: 0 }))).toEqual(['high-b', 'shared', 'low', 'zero']);
+    for (const sortDir of ['asc', 'desc']) {
+      const result = ids(page({ sortDir }));
+      expect(result.indexOf('high-a')).toBeGreaterThan(result.indexOf('zero'));
+    }
+  });
   it('filters before pagination and counts only matches, including the threshold', () => {
     const result = page({ minFitScore: 70, pageSize: 2 });
     expect(result.totalNumber).toBe(3);

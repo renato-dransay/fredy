@@ -5,18 +5,15 @@
 
 /**
  * Shared fit tone for cards and pins, on the same rounded display scale. Missing scores are
- * unassessed; required failures override scores, and stale/unknown results never appear green.
- * @param {{score: number, hardFailure?: boolean, hardUnknown?: boolean, stale?: boolean}|null} summary
+ * unassessed; required failures override scores, and stale results never appear green.
+ * Unknown criteria remain disclosed separately and do not change the known-only score's tone.
+ * @param {{score: number|null, hardFailure?: boolean, hardUnknown?: boolean, stale?: boolean}|null} summary
  * @returns {'unassessed'|'low'|'medium'|'high'}
  */
 export function fitTone(summary) {
   if (!summary || !Number.isFinite(summary.score)) return 'unassessed';
   const score = Math.round(Math.max(0, Math.min(100, summary.score))) / 10;
-  return summary.hardFailure || score < 5
-    ? 'low'
-    : summary.stale || summary.hardUnknown || score < 8
-      ? 'medium'
-      : 'high';
+  return summary.hardFailure || score < 5 ? 'low' : summary.stale || score < 8 ? 'medium' : 'high';
 }
 
 /** Minimum-fit choices on the displayed ten-point scale. */

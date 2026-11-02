@@ -13,6 +13,7 @@ const at = (id, longitude, latitude, fitSummary = null) => ({ id, longitude, lat
 describe('fit pin presentation', () => {
   it.each([
     [null, 'unassessed'],
+    [assessed(null, { hardUnknown: true }), 'unassessed'],
     [{ score: NaN }, 'unassessed'],
     [assessed(0), 'low'],
     [assessed(49), 'low'],
@@ -23,9 +24,9 @@ describe('fit pin presentation', () => {
   ])('classifies %j as %s', (summary, expected) => {
     expect(fitTone(summary)).toBe(expected);
   });
-  it('never paints a failed, unknown or stale assessment green', () => {
+  it('keeps failed and stale assessments out of green without penalizing unknown criteria', () => {
     expect(fitTone(assessed(100, { hardFailure: true }))).toBe('low');
-    expect(fitTone(assessed(100, { hardUnknown: true }))).toBe('medium');
+    expect(fitTone(assessed(100, { hardUnknown: true }))).toBe('high');
     expect(fitTone(assessed(100, { stale: true }))).toBe('medium');
   });
   it('marks mixed groups explicitly instead of hiding a low or unassessed result behind a good one', () => {

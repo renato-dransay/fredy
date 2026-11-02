@@ -1,0 +1,43 @@
+# Use the deployment's existing conf volume so browser profiles share its private backup lifecycle.
+# No browser viewer or debugging ports are published.
+services:
+  auto-apply-init:
+    build:
+      context: ../..
+      dockerfile: tools/auto-apply/Dockerfile.worker
+    image: fredy-auto-apply
+    user: root
+    entrypoint: ["sh", "-c"]
+    command: ["mkdir -p /conf/browser-profiles && chown node:node /conf/browser-profiles && chmod 700 /conf/browser-profiles"]
+    volumes:
+      - fredy-conf:/conf
+    restart: "no"
+  auto-apply:
+    image: fredy-auto-apply
+    depends_on:
+      auto-apply-init:
+        condition: service_completed_successfully
+    environment:
+      FREDY_URL: ${FREDY_URL:?Set the private HTTPS Fredy URL}
+      FREDY_WORKER_TOKEN_FILE: /run/secrets/worker-token
+      FREDY_BROWSER_PROFILE_DIR: /conf/browser-profiles
+    secrets:
+      - worker-token
+    volumes:
+      - fredy-conf:/conf
+    restart: unless-stopped
+    stop_grace_period: 30s
+    security_opt:
+      - seccomp=./seccomp_profile.json
+    shm_size: 512m
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+volumes:
+  fredy-conf:
+    external: true
+    name: ${FREDY_CONF_VOLUME:?Set the deployment's existing conf volume name}
+secrets:
+  worker-token:
+    file: ${FREDY_WORKER_TOKEN_FILE:?Set the private mode-0600 paired-token file}

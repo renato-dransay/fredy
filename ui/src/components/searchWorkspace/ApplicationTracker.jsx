@@ -4,21 +4,20 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import AutoApplyRuns from '../autoApply/AutoApplyRuns.jsx';
 import { Link } from 'react-router';
 import { Button } from '@douyinfe/semi-ui-19';
 import { useTranslation } from '../../services/i18n/i18n.jsx';
 import { errorMessage } from '../../services/xhr.js';
+import { subscribeJobEvents } from '../../services/sse/jobEvents.js';
 import { fetchApplicationLetter } from '../../services/applicationClient.js';
 import {
   loadApplication,
   saveApplication,
   addApplicationEvent,
-  sendApplication,
-  resolveApplicationDelivery,
-  loadMailSettings,
   visitCalendarUrl,
 } from '../../services/searchWorkspaceClient.js';
-import { APPLICATION_STATUSES, localFromUtc, utcFromLocal, sendNeedsReview } from '../../services/searchWorkspace.js';
+import { APPLICATION_STATUSES, localFromUtc, utcFromLocal } from '../../services/searchWorkspace.js';
 import './SearchWorkspace.less';
 
 const EMPTY = {
@@ -28,11 +27,9 @@ const EMPTY = {
   body: '',
   visitAt: null,
   followUpAt: null,
-  autoSendAt: null,
-  sendState: 'none',
 };
 
-/** A private application, its reviewed outgoing message and dated correspondence history. */
+/** A private application with manual status, letter draft, appointment dates and correspondence history. */
 export default function ApplicationTracker({ listingId }) {
   const t = useTranslation();
   const [application, setApplication] = useState(EMPTY);
@@ -41,52 +38,50 @@ export default function ApplicationTracker({ listingId }) {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [failed, setFailed] = useState(false);
-  const [reviewed, setReviewed] = useState(false);
-  const [smtpReady, setSmtpReady] = useState(false);
   const [note, setNote] = useState('');
   const [eventKind, setEventKind] = useState('note');
-  const [resolvedOutcome, setResolvedOutcome] = useState('sent');
-  const [resolutionNote, setResolutionNote] = useState('');
-  const sendKey = useRef(null);
   const currentListing = useRef(listingId);
+  const draftDirty = useRef(false);
 
   useEffect(() => {
     let active = true;
     currentListing.current = listingId;
+    draftDirty.current = false;
     setApplication(EMPTY);
     setEvents([]);
     setLoading(true);
     setMessage('');
-    setReviewed(false);
-    sendKey.current = null;
-    Promise.all([loadApplication(listingId), loadMailSettings()])
-      .then(([value, mail]) => {
-        if (active) {
-          setApplication({ ...EMPTY, ...value.application });
-          setEvents(value.events ?? []);
-          setSmtpReady(mail.smtp?.configured === true);
-        }
-      })
-      .catch((error) => {
-        if (active) {
-          setFailed(true);
-          setMessage(errorMessage(error, t('search.error')));
-        }
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+    const refresh = () =>
+      loadApplication(listingId)
+        .then((value) => {
+          if (active) {
+            if (!draftDirty.current) setApplication({ ...EMPTY, ...value.application });
+            setEvents(value.events ?? []);
+          }
+        })
+        .catch((error) => {
+          if (active) {
+            setFailed(true);
+            setMessage(errorMessage(error, t('search.error')));
+          }
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+    void refresh();
+    const unsubscribe = subscribeJobEvents('auto-apply', refresh);
     return () => {
       active = false;
+      unsubscribe();
     };
   }, [listingId, t]);
 
   const update = (patch) => {
+    draftDirty.current = true;
     setApplication((value) => ({ ...value, ...patch }));
-    setReviewed(false);
-    sendKey.current = null;
   };
   const applyResponse = (value) => {
+    draftDirty.current = false;
     setApplication({ ...EMPTY, ...value.application });
     setEvents(value.events ?? []);
   };
@@ -114,15 +109,12 @@ export default function ApplicationTracker({ listingId }) {
     body: application.body,
     visitAt: application.visitAt || null,
     followUpAt: application.followUpAt || null,
-    autoSendAt: application.autoSendAt || null,
   });
   const save = () =>
     run(async (id) => {
       const value = await saveApplication(id, payload());
       if (currentListing.current === id) {
         applyResponse(value);
-        setReviewed(false);
-        sendKey.current = null;
       }
     }, t('search.saved'));
 
@@ -132,28 +124,6 @@ export default function ApplicationTracker({ listingId }) {
       if (currentListing.current === id)
         update({ body: letter.text, subject: application.subject || t('search.applicationSubject') });
     }, t('search.draftReady'));
-
-  const send = () =>
-    run(async (id) => {
-      if (!reviewed || application.autoSendAt || sendNeedsReview(application.sendState)) return;
-      // Persist precisely the reviewed message before asking the server to send. A retry keeps its
-      // key, while edits to the message explicitly invalidate the review and the previous key.
-      sendKey.current ??= crypto.randomUUID();
-      const saved = await saveApplication(id, { ...payload(), autoSendAt: null });
-      if (currentListing.current !== id) return;
-      applyResponse(saved);
-      try {
-        const sent = await sendApplication(id, sendKey.current, saved.application.revision);
-        if (currentListing.current === id) {
-          applyResponse(sent);
-          setReviewed(false);
-        }
-      } catch (error) {
-        const refreshed = await loadApplication(id).catch(() => null);
-        if (currentListing.current === id && refreshed) applyResponse(refreshed);
-        throw error;
-      }
-    }, t('search.sendRecorded'));
 
   const recordEvent = () =>
     run(async (id) => {
@@ -166,12 +136,11 @@ export default function ApplicationTracker({ listingId }) {
       }
     }, t('search.saved'));
 
-  const unsafeSend = sendNeedsReview(application.sendState);
-  const alreadySent = ['sent', 'accepted', 'submitted'].includes(application.sendState);
   return (
     <section className="listing-card searchWorkspace" aria-label={t('search.applicationTitle')}>
       <h2 className="listing-card__label">{t('search.applicationTitle')}</h2>
       <p>{t('search.applicationHelp')}</p>
+      <AutoApplyRuns listingId={listingId} />
       {loading ? (
         <p role="status">{t('search.loading')}</p>
       ) : (
@@ -190,9 +159,6 @@ export default function ApplicationTracker({ listingId }) {
               ))}
             </select>
           </label>
-          {application.status === 'submitted' && (
-            <p className="searchWorkspace__muted">{t('search.manualStatusHelp')}</p>
-          )}
           <div className="searchWorkspace__fields">
             <label className="searchWorkspace__field">
               <span>{t('search.visitAt')}</span>
@@ -220,7 +186,7 @@ export default function ApplicationTracker({ listingId }) {
             </a>
           )}
           <details>
-            <summary>{t('search.outgoingMessage')}</summary>
+            <summary>{t('search.letterDraft')}</summary>
             <div className="searchWorkspace__actions">
               <Button disabled={busy} onClick={draft}>
                 {t('search.draftLetter')}
@@ -256,122 +222,10 @@ export default function ApplicationTracker({ listingId }) {
                 onChange={(event) => update({ body: event.target.value })}
               />
             </label>
-            <label className="searchWorkspace__field">
-              <span>{t('search.autoSendAt')}</span>
-              <input
-                type="datetime-local"
-                value={localFromUtc(application.autoSendAt)}
-                disabled={busy || unsafeSend || alreadySent}
-                onChange={(event) => update({ autoSendAt: utcFromLocal(event.target.value) })}
-              />
-            </label>
-            {application.autoSendAt && (
-              <div className="searchWorkspace__notice searchWorkspace__notice--warning">
-                <p>{t('search.scheduleWarning')}</p>
-                <Button
-                  disabled={busy}
-                  onClick={() =>
-                    run(async (id) => {
-                      const result = await saveApplication(id, { autoSendAt: null });
-                      if (currentListing.current === id) applyResponse(result);
-                    }, t('search.scheduleCancelled'))
-                  }
-                >
-                  {t('search.cancelSchedule')}
-                </Button>
-              </div>
-            )}
-            {!smtpReady && (
-              <p className="searchWorkspace__notice">
-                {t('search.smtpMissing')} <Link to="/applications">{t('search.mailSetup')}</Link>
-              </p>
-            )}
-            {unsafeSend && (
-              <p role="alert" className="searchWorkspace__notice searchWorkspace__notice--warning">
-                {t('search.deliveryUnknown')}
-              </p>
-            )}
-            {application.sendState === 'uncertain' && (
-              <div className="searchWorkspace__notice searchWorkspace__notice--warning">
-                <h3>{t('search.reconcileTitle')}</h3>
-                <p>{t('search.reconcileHelp')}</p>
-                <label className="searchWorkspace__field">
-                  <span>{t('search.deliveryState')}</span>
-                  <select
-                    value={resolvedOutcome}
-                    disabled={busy}
-                    onChange={(event) => setResolvedOutcome(event.target.value)}
-                  >
-                    <option value="sent">{t('search.reconcileSent')}</option>
-                    <option value="not_sent">{t('search.reconcileNotSent')}</option>
-                  </select>
-                </label>
-                <label className="searchWorkspace__field">
-                  <span>{t('search.reconcileNote')}</span>
-                  <textarea
-                    maxLength={16000}
-                    value={resolutionNote}
-                    disabled={busy}
-                    onChange={(event) => setResolutionNote(event.target.value)}
-                  />
-                </label>
-                <div className="searchWorkspace__actions">
-                  <Button
-                    disabled={busy || !resolutionNote.trim()}
-                    onClick={() =>
-                      run(async (id) => {
-                        const result = await resolveApplicationDelivery(id, resolvedOutcome, resolutionNote);
-                        if (currentListing.current === id) {
-                          applyResponse(result);
-                          setResolutionNote('');
-                          sendKey.current = null;
-                          setReviewed(false);
-                        }
-                      }, t('search.saved'))
-                    }
-                  >
-                    {t('search.reconcileSave')}
-                  </Button>
-                </div>
-              </div>
-            )}
-            {alreadySent && <p className="searchWorkspace__notice">{t('search.alreadySent')}</p>}
-            <label className="searchWorkspace__check">
-              <input
-                type="checkbox"
-                checked={reviewed}
-                disabled={busy}
-                onChange={(event) => setReviewed(event.target.checked)}
-              />
-              {t('search.reviewed')}
-            </label>
-            <div className="searchWorkspace__actions">
-              <Button
-                onClick={send}
-                loading={busy}
-                disabled={
-                  busy ||
-                  !reviewed ||
-                  !smtpReady ||
-                  !application.recipient ||
-                  !application.body ||
-                  !!application.autoSendAt ||
-                  unsafeSend ||
-                  alreadySent
-                }
-              >
-                {t('search.sendNow')}
-              </Button>
-            </div>
           </details>
           <div className="searchWorkspace__actions">
-            <Button
-              theme="solid"
-              loading={busy}
-              disabled={busy || unsafeSend || (!!application.autoSendAt && (!reviewed || !smtpReady))}
-              onClick={save}
-            >
-              {application.autoSendAt ? t('search.saveAndSchedule') : t('search.saveApplication')}
+            <Button theme="solid" loading={busy} disabled={busy} onClick={save}>
+              {t('search.saveApplication')}
             </Button>
           </div>
           <h3>{t('search.timeline')}</h3>
